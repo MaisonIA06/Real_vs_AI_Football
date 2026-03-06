@@ -97,9 +97,9 @@ export default function HallucinationsMuseumPage() {
         <div className="flex items-center gap-4">
           <button 
             onClick={() => navigate('/')}
-            className="p-2 hover:bg-white/10 rounded-full transition-colors"
+            className="p-3 active:bg-white/10 rounded-full transition-colors"
           >
-            <ChevronLeft className="w-6 h-6" />
+            <ChevronLeft className="w-7 h-7" />
           </button>
           <div>
             <h1 className="text-xl font-display font-bold tracking-wider uppercase text-dark-300">
@@ -182,7 +182,7 @@ export default function HallucinationsMuseumPage() {
 
                 <motion.div 
                   className="bg-primary-500/10 border border-primary-500/20 p-6 rounded-2xl"
-                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
                   <h3 className="text-primary-400 text-sm font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
                     <Eye className="w-4 h-4" /> Conseil d'expert
@@ -198,19 +198,19 @@ export default function HallucinationsMuseumPage() {
       </main>
 
       {/* Footer Navigation */}
-      <footer className="relative z-10 p-8 flex flex-col md:flex-row items-center justify-between gap-8 border-t border-white/5 bg-dark-950/80 backdrop-blur-md">
+      <footer className="relative z-10 p-8 flex flex-col md:flex-row items-center justify-between gap-8 border-t border-white/5 bg-dark-950/90">
         <div className="flex items-center gap-6">
           <div className="flex gap-2">
             {exhibits.map((_, i) => (
               <div 
                 key={i}
-                className={`h-1 transition-all duration-500 rounded-full ${
-                  i === currentIndex ? 'w-8 bg-primary-500' : 'w-2 bg-dark-700'
+                className={`h-2 transition-all duration-500 rounded-full ${
+                  i === currentIndex ? 'w-10 bg-primary-500' : 'w-3 bg-dark-700'
                 }`}
               />
             ))}
           </div>
-          <span className="text-xs font-mono text-dark-500">
+          <span className="text-sm font-mono text-dark-500">
             {currentIndex + 1} / {exhibits.length}
           </span>
         </div>
@@ -218,24 +218,24 @@ export default function HallucinationsMuseumPage() {
         <div className="flex items-center gap-4">
           <button 
             onClick={prev}
-            className="p-4 rounded-2xl bg-dark-900 border border-white/5 hover:bg-dark-800 transition-all active:scale-95"
+            className="p-5 rounded-2xl bg-dark-900 border border-white/5 active:bg-dark-800 transition-all active:scale-95"
           >
-            <ChevronLeft className="w-6 h-6" />
+            <ChevronLeft className="w-7 h-7" />
           </button>
           <button 
             onClick={next}
-            className="px-8 py-4 rounded-2xl bg-primary-600 hover:bg-primary-500 font-bold flex items-center gap-3 transition-all active:scale-95 shadow-lg shadow-primary-900/20"
+            className="px-10 py-5 rounded-2xl bg-primary-600 active:bg-primary-500 font-bold text-lg flex items-center gap-3 transition-all active:scale-95 shadow-lg shadow-primary-900/20"
           >
-            Suivant <ChevronRight className="w-5 h-5" />
+            Suivant <ChevronRight className="w-6 h-6" />
           </button>
         </div>
 
         <button 
           onClick={() => navigate('/')}
-          className="flex items-center gap-2 text-dark-500 hover:text-white transition-colors group"
+          className="flex items-center gap-2 text-dark-500 active:text-white transition-colors p-3"
         >
-          <X className="w-4 h-4 group-hover:rotate-90 transition-transform" />
-          <span className="text-sm font-medium">Fermer la galerie</span>
+          <X className="w-5 h-5" />
+          <span className="text-base font-medium">Fermer la galerie</span>
         </button>
       </footer>
     </div>

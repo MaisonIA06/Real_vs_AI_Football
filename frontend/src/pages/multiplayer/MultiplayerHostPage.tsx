@@ -241,10 +241,14 @@ export default function MultiplayerHostPage() {
     }
   };
 
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
+
   const handleQuit = () => {
-    if (window.confirm('Êtes-vous sûr de vouloir quitter ? La partie sera terminée pour tous les joueurs.')) {
-      navigate('/');
-    }
+    setShowQuitConfirm(true);
+  };
+
+  const confirmQuit = () => {
+    navigate('/');
   };
 
   // Mettre à jour l'URL avec l'IP personnalisée
@@ -291,10 +295,10 @@ export default function MultiplayerHostPage() {
       >
         <button
           onClick={handleQuit}
-          className="btn-secondary flex items-center gap-2 px-4 py-2"
+          className="btn-secondary flex items-center gap-2 px-5 py-3 text-base"
         >
-          <Home className="w-4 h-4" />
-          <span className="hidden sm:inline">Quitter</span>
+          <Home className="w-5 h-5" />
+          <span>Quitter</span>
         </button>
 
         <div className="flex items-center gap-4">
@@ -361,7 +365,7 @@ export default function MultiplayerHostPage() {
                           navigator.clipboard.writeText(joinUrl);
                           alert('URL copiée !');
                         }}
-                        className="px-3 py-1 bg-primary-500/20 hover:bg-primary-500/30 rounded text-xs text-primary-400 transition-colors whitespace-nowrap"
+                        className="px-3 py-2 bg-primary-500/20 active:bg-primary-500/30 rounded text-sm text-primary-400 transition-colors whitespace-nowrap"
                       >
                         Copier
                       </button>
@@ -373,7 +377,7 @@ export default function MultiplayerHostPage() {
                 <div className="mt-4">
                   <button
                     onClick={() => setShowIpInput(!showIpInput)}
-                    className="text-xs text-primary-400 hover:text-primary-300 transition-colors"
+                    className="text-sm text-primary-400 active:text-primary-300 transition-colors p-2"
                   >
                     {showIpInput ? 'Masquer' : 'Corriger l\'IP'}
                   </button>
@@ -393,7 +397,7 @@ export default function MultiplayerHostPage() {
                         {detectedIp && detectedIp !== 'localhost' && detectedIp !== '127.0.0.1' && (
                           <button
                             onClick={handleUseDetectedIp}
-                            className="px-2 py-1 bg-accent-500/20 hover:bg-accent-500/30 rounded text-xs text-accent-400 transition-colors"
+                            className="px-3 py-2 bg-accent-500/20 active:bg-accent-500/30 rounded text-sm text-accent-400 transition-colors"
                             title={`Utiliser ${detectedIp}`}
                           >
                             Auto
@@ -871,6 +875,49 @@ export default function MultiplayerHostPage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Modale de confirmation de sortie (remplace window.confirm pour le tactile) */}
+      <AnimatePresence>
+        {showQuitConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-dark-900/80"
+            onClick={() => setShowQuitConfirm(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="card max-w-sm w-full p-8 relative text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="font-display text-2xl font-bold mb-3">
+                Quitter la partie ?
+              </h2>
+              <p className="text-dark-400 mb-8">
+                La partie sera terminée pour tous les joueurs.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button
+                  onClick={() => setShowQuitConfirm(false)}
+                  className="btn-secondary px-8 py-4 text-lg"
+                >
+                  Continuer
+                </button>
+                <button
+                  onClick={confirmQuit}
+                  className="px-8 py-4 rounded-xl font-semibold text-lg bg-red-500/20 active:bg-red-500/40 border-2 border-red-500/50 text-red-400 transition-all"
+                >
+                  Quitter
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

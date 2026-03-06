@@ -115,7 +115,7 @@ export default function HomePage() {
           transition={{ delay: 0.5 }}
           className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12"
         >
-          <div className="card flex flex-col items-center p-6 transition-transform hover:scale-105">
+          <div className="card flex flex-col items-center p-6 transition-transform active:scale-95">
             <div className="w-14 h-14 rounded-full bg-primary-500/20 flex items-center justify-center mb-4">
               <Zap className="w-7 h-7 text-primary-400" />
             </div>
@@ -123,7 +123,7 @@ export default function HomePage() {
             <p className="text-dark-400 text-sm">Testez votre perception sur 10 paires d'images ou vidéos</p>
           </div>
 
-          <div className="card flex flex-col items-center p-6 transition-transform hover:scale-105">
+          <div className="card flex flex-col items-center p-6 transition-transform active:scale-95">
             <div className="w-14 h-14 rounded-full bg-accent-500/20 flex items-center justify-center mb-4">
               <Trophy className="w-7 h-7 text-accent-400" />
             </div>
@@ -131,7 +131,7 @@ export default function HomePage() {
             <p className="text-dark-400 text-sm">Enchaînez les bonnes réponses pour des points bonus</p>
           </div>
 
-          <div className="card flex flex-col items-center p-6 transition-transform hover:scale-105">
+          <div className="card flex flex-col items-center p-6 transition-transform active:scale-95">
             <div className="w-14 h-14 rounded-full bg-orange-500/20 flex items-center justify-center mb-4">
               <Trophy className="w-7 h-7 text-orange-400" />
             </div>
@@ -211,7 +211,7 @@ export default function HomePage() {
         >
           <button
             onClick={() => navigate('/leaderboard')}
-            className="text-dark-400 hover:text-primary-400 transition-colors"
+            className="text-dark-400 active:text-primary-400 transition-colors p-3"
           >
             <Trophy className="w-5 h-5 inline mr-2" />
             Voir le classement
@@ -237,12 +237,12 @@ export default function HomePage() {
               className="card max-w-md w-full p-8 relative"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Bouton fermer */}
+              {/* Bouton fermer — agrandi pour le tactile */}
               <button
                 onClick={() => setShowAudienceModal(false)}
-                className="absolute top-4 right-4 text-dark-400 hover:text-white transition-colors"
+                className="absolute top-3 right-3 text-dark-400 active:text-white transition-colors p-2 rounded-full"
               >
-                <X className="w-6 h-6" />
+                <X className="w-7 h-7" />
               </button>
 
               {/* Titre */}
@@ -255,30 +255,30 @@ export default function HomePage() {
 
               {/* Options */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Option Scolaire */}
+                {/* Option Scolaire — zones tactiles agrandies */}
                 <button
                   onClick={() => startGame('school')}
-                  className="group flex flex-col items-center gap-4 p-6 rounded-xl bg-dark-800 border-2 border-dark-700 hover:border-primary-500 hover:bg-dark-700 transition-all"
+                  className="group flex flex-col items-center gap-4 p-8 rounded-xl bg-dark-800 border-2 border-dark-700 active:border-primary-500 active:bg-dark-700 transition-all min-h-[140px]"
                 >
-                  <div className="w-16 h-16 rounded-full bg-primary-500/20 flex items-center justify-center group-hover:bg-primary-500/30 transition-colors">
-                    <GraduationCap className="w-8 h-8 text-primary-400" />
+                  <div className="w-20 h-20 rounded-full bg-primary-500/20 flex items-center justify-center group-active:bg-primary-500/30 transition-colors">
+                    <GraduationCap className="w-10 h-10 text-primary-400" />
                   </div>
                   <div className="text-center">
-                    <div className="font-display text-lg font-semibold mb-1">Scolaire</div>
+                    <div className="font-display text-xl font-semibold mb-1">Scolaire</div>
                     <div className="text-dark-400 text-sm">École, collège, lycée...</div>
                   </div>
                 </button>
 
-                {/* Option Grand Public */}
+                {/* Option Grand Public — zones tactiles agrandies */}
                 <button
                   onClick={() => startGame('public')}
-                  className="group flex flex-col items-center gap-4 p-6 rounded-xl bg-dark-800 border-2 border-dark-700 hover:border-accent-500 hover:bg-dark-700 transition-all"
+                  className="group flex flex-col items-center gap-4 p-8 rounded-xl bg-dark-800 border-2 border-dark-700 active:border-accent-500 active:bg-dark-700 transition-all min-h-[140px]"
                 >
-                  <div className="w-16 h-16 rounded-full bg-accent-500/20 flex items-center justify-center group-hover:bg-accent-500/30 transition-colors">
-                    <Users className="w-8 h-8 text-accent-400" />
+                  <div className="w-20 h-20 rounded-full bg-accent-500/20 flex items-center justify-center group-active:bg-accent-500/30 transition-colors">
+                    <Users className="w-10 h-10 text-accent-400" />
                   </div>
                   <div className="text-center">
-                    <div className="font-display text-lg font-semibold mb-1">Grand Public</div>
+                    <div className="font-display text-xl font-semibold mb-1">Grand Public</div>
                     <div className="text-dark-400 text-sm">Particulier, entreprise...</div>
                   </div>
                 </button>

@@ -270,13 +270,13 @@ export default function ResultPage() {
           transition={{ delay: 0.8 }}
           className="flex flex-wrap justify-center gap-4"
         >
-          <button onClick={() => navigate('/')} className="btn-primary">
-            <RotateCcw className="w-5 h-5 inline mr-2" />
+          <button onClick={() => navigate('/')} className="btn-primary text-xl px-10 py-5">
+            <RotateCcw className="w-6 h-6 inline mr-2" />
             Rejouer
           </button>
 
-          <button onClick={() => navigate('/leaderboard')} className="btn-secondary">
-            <Trophy className="w-5 h-5 inline mr-2" />
+          <button onClick={() => navigate('/leaderboard')} className="btn-secondary text-xl px-10 py-5">
+            <Trophy className="w-6 h-6 inline mr-2" />
             Classement
           </button>
 
@@ -288,9 +288,9 @@ export default function ResultPage() {
                 url: window.location.origin,
               });
             }}
-            className="btn-secondary"
+            className="btn-secondary text-xl px-10 py-5"
           >
-            <Share2 className="w-5 h-5 inline mr-2" />
+            <Share2 className="w-6 h-6 inline mr-2" />
             Partager
           </button>
         </motion.div>

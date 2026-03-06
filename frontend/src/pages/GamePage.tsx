@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
-import { Flame, Clock, CheckCircle, XCircle, Home } from 'lucide-react';
+import { Flame, Home, X } from 'lucide-react';
 import { gameApi, MediaPair, AnswerResponse } from '../services/api';
 import MediaDisplay from '../components/MediaDisplay';
 import AudioDisplay from '../components/AudioDisplay';
@@ -21,6 +21,7 @@ export default function GamePage() {
   const [isAnswering, setIsAnswering] = useState(false);
   const [feedback, setFeedback] = useState<AnswerResponse | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const [pairs, setPairs] = useState<MediaPair[]>([]);
   const startTimeRef = useRef<number>(Date.now());
 
@@ -48,13 +49,15 @@ export default function GamePage() {
   const currentPair = pairs[currentIndex];
 
   const handleQuit = useCallback(() => {
-    if (window.confirm('Êtes-vous sûr de vouloir quitter la partie ? Votre progression sera perdue.')) {
-      // Nettoyer le localStorage de la session
-      if (sessionKey) {
-        localStorage.removeItem(`pairs_${sessionKey}`);
-      }
-      navigate('/');
+    setShowQuitConfirm(true);
+  }, []);
+
+  const confirmQuit = useCallback(() => {
+    // Nettoyer le localStorage de la session
+    if (sessionKey) {
+      localStorage.removeItem(`pairs_${sessionKey}`);
     }
+    navigate('/');
   }, [sessionKey, navigate]);
 
   const handleAnswer = useCallback(
@@ -124,14 +127,14 @@ export default function GamePage() {
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-wrap items-center justify-between gap-4 mb-6"
       >
-        {/* Bouton Quitter - en haut à gauche */}
+        {/* Bouton Quitter - en haut à gauche (agrandi pour tactile) */}
         <button
           onClick={handleQuit}
-          className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm hover:bg-dark-700 transition-colors"
+          className="btn-secondary flex items-center gap-2 px-5 py-3 text-base active:bg-dark-700 transition-colors"
           title="Quitter la partie"
         >
-          <Home className="w-4 h-4" />
-          <span className="hidden sm:inline">Quitter</span>
+          <Home className="w-5 h-5" />
+          <span>Quitter</span>
         </button>
 
         {/* Progress */}
@@ -295,6 +298,57 @@ export default function GamePage() {
             pointsEarned={feedback.points_earned}
             globalStats={feedback.global_stats}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Modale de confirmation de sortie (remplace window.confirm pour le tactile) */}
+      <AnimatePresence>
+        {showQuitConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-dark-900/80 backdrop-blur-sm"
+            onClick={() => setShowQuitConfirm(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="card max-w-sm w-full p-8 relative text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setShowQuitConfirm(false)}
+                className="absolute top-4 right-4 text-dark-400 active:text-white transition-colors p-2"
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              <h2 className="font-display text-2xl font-bold mb-3">
+                Quitter la partie ?
+              </h2>
+              <p className="text-dark-400 mb-8">
+                Votre progression sera perdue.
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button
+                  onClick={() => setShowQuitConfirm(false)}
+                  className="btn-secondary px-8 py-4 text-lg"
+                >
+                  Continuer
+                </button>
+                <button
+                  onClick={confirmQuit}
+                  className="px-8 py-4 rounded-xl font-semibold text-lg bg-red-500/20 active:bg-red-500/40 border-2 border-red-500/50 text-red-400 transition-all"
+                >
+                  Quitter
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

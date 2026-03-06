@@ -208,7 +208,7 @@ export default function MultiplayerJoinPage() {
         <div className="mt-6 text-center">
           <button
             onClick={() => navigate('/')}
-            className="text-dark-400 hover:text-primary-400 transition-colors"
+            className="text-dark-400 active:text-primary-400 transition-colors p-3 text-lg"
           >
             ← Retour à l'accueil
           </button>

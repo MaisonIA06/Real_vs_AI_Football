@@ -153,8 +153,8 @@ export default function LeaderboardPage() {
           transition={{ delay: 0.5 }}
           className="text-center mt-8"
         >
-          <button onClick={() => navigate('/')} className="btn-secondary">
-            <Home className="w-5 h-5 inline mr-2" />
+          <button onClick={() => navigate('/')} className="btn-secondary text-lg">
+            <Home className="w-6 h-6 inline mr-2" />
             Retour à l'accueil
           </button>
         </motion.div>
