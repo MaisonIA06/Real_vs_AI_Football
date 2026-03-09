@@ -6,6 +6,7 @@ import confetti from 'canvas-confetti';
 import { Trophy, Flame, Clock, RotateCcw, Share2, Check, Home } from 'lucide-react';
 import { gameApi } from '../services/api';
 import LogoMIA from '../components/LogoMIA';
+import VirtualKeyboard from '../components/VirtualKeyboard';
 
 export default function ResultPage() {
   const { sessionKey } = useParams<{ sessionKey: string }>();
@@ -221,7 +222,7 @@ export default function ResultPage() {
           </div>
         </motion.div>
 
-        {/* Pseudo Input */}
+        {/* Pseudo Input + Virtual Keyboard */}
         {!pseudoSaved && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -232,23 +233,25 @@ export default function ResultPage() {
             <h3 className="font-display text-lg font-semibold mb-4 text-center">
               Enregistrez votre score au classement
             </h3>
-            <div className="flex gap-3">
+            <div className="flex items-center gap-3 mb-2">
               <input
                 type="text"
                 value={pseudo}
-                onChange={(e) => setPseudo(e.target.value)}
+                readOnly
                 placeholder="Votre pseudo"
                 maxLength={50}
-                className="input-styled flex-1"
+                className="input-styled flex-1 caret-primary-500"
+                inputMode="none"
               />
-              <button
-                onClick={handleSubmitPseudo}
-                disabled={!pseudo.trim() || isSubmitting}
-                className="btn-primary px-6 disabled:opacity-50"
-              >
-                {isSubmitting ? '...' : 'Valider'}
-              </button>
             </div>
+            <VirtualKeyboard
+              value={pseudo}
+              onChange={setPseudo}
+              onSubmit={handleSubmitPseudo}
+              maxLength={50}
+              submitLabel={isSubmitting ? '...' : 'Valider'}
+              submitDisabled={!pseudo.trim() || isSubmitting}
+            />
           </motion.div>
         )}
 
