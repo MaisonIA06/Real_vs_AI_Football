@@ -8,7 +8,7 @@ import MediaDisplay from '../components/MediaDisplay';
 import AudioDisplay from '../components/AudioDisplay';
 import Timer from '../components/Timer';
 import ProgressBar from '../components/ProgressBar';
-import FeedbackOverlay from '../components/FeedbackOverlay';
+import QuizResult from '../components/QuizResult';
 import LogoMIA from '../components/LogoMIA';
 
 export default function GamePage() {
@@ -20,7 +20,8 @@ export default function GamePage() {
   const [streak, setStreak] = useState(0);
   const [isAnswering, setIsAnswering] = useState(false);
   const [feedback, setFeedback] = useState<AnswerResponse | null>(null);
-  const [showFeedback, setShowFeedback] = useState(false);
+  const [showResult, setShowResult] = useState(false);
+  const [playerChoice, setPlayerChoice] = useState<'left' | 'right' | 'real' | 'ai' | null>(null);
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const [pairs, setPairs] = useState<MediaPair[]>([]);
   const startTimeRef = useRef<number>(Date.now());
@@ -65,6 +66,7 @@ export default function GamePage() {
       if (isAnswering || !currentPair || !sessionKey) return;
 
       setIsAnswering(true);
+      setPlayerChoice(choice);
       const responseTime = Date.now() - startTimeRef.current;
 
       try {
@@ -79,29 +81,28 @@ export default function GamePage() {
         setFeedback(result);
         setScore(result.total_score);
         setStreak(result.current_streak);
-        setShowFeedback(true);
-
-        // Wait for feedback animation
-        setTimeout(() => {
-          setShowFeedback(false);
-
-          if (result.is_session_complete) {
-            navigate(`/result/${sessionKey}`);
-          } else {
-            setCurrentIndex((prev) => prev + 1);
-            startTimeRef.current = Date.now();
-          }
-
-          setIsAnswering(false);
-          setFeedback(null);
-        }, 2000);
+        setShowResult(true);
       } catch (error) {
         console.error('Error submitting answer:', error);
         setIsAnswering(false);
+        setPlayerChoice(null);
       }
     },
-    [isAnswering, currentPair, sessionKey, navigate]
+    [isAnswering, currentPair, sessionKey]
   );
+
+  const handleNext = useCallback(() => {
+    if (feedback?.is_session_complete) {
+      navigate(`/result/${sessionKey}`);
+    } else {
+      setCurrentIndex((prev) => prev + 1);
+      startTimeRef.current = Date.now();
+    }
+    setShowResult(false);
+    setIsAnswering(false);
+    setFeedback(null);
+    setPlayerChoice(null);
+  }, [feedback, sessionKey, navigate]);
 
   // Reset timer on question change
   useEffect(() => {
@@ -160,16 +161,28 @@ export default function GamePage() {
           )}
         </div>
 
-        {/* Timer */}
-        <Timer 
-          key={currentIndex} 
-          duration={30} 
-          onTimeUp={() => handleAnswer(currentPair.media_type === 'audio' ? 'ai' : 'left')} 
-        />
+        {/* Timer (hidden during result screen) */}
+        {!showResult && (
+          <Timer 
+            key={currentIndex} 
+            duration={30} 
+            onTimeUp={() => handleAnswer(currentPair.media_type === 'audio' ? 'ai' : 'left')} 
+          />
+        )}
       </motion.div>
 
       {/* Game Area */}
       <div className="flex-1 flex flex-col items-center justify-center">
+        {showResult && feedback && currentPair && playerChoice ? (
+          <QuizResult
+            pair={currentPair}
+            feedback={feedback}
+            playerChoice={playerChoice}
+            onNext={handleNext}
+            isLastQuestion={feedback.is_session_complete}
+          />
+        ) : (
+        <>
         <motion.h2
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -287,19 +300,9 @@ export default function GamePage() {
               : 'Difficile'}
           </span>
         </motion.div>
-      </div>
-
-      {/* Feedback Overlay */}
-      <AnimatePresence>
-        {showFeedback && feedback && (
-          <FeedbackOverlay
-            isCorrect={feedback.is_correct}
-            hint={feedback.hint}
-            pointsEarned={feedback.points_earned}
-            globalStats={feedback.global_stats}
-          />
+        </>
         )}
-      </AnimatePresence>
+      </div>
 
       {/* Modale de confirmation de sortie (remplace window.confirm pour le tactile) */}
       <AnimatePresence>
