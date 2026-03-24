@@ -31,7 +31,7 @@ export default function MultiplayerJoinPage() {
     if (roomCode.length === 6) {
       const verifyRoom = async () => {
         // Utiliser fetch natif au lieu d'axios pour iOS
-        const apiUrl = `${window.location.protocol}//${window.location.hostname}:8080/api/game/multiplayer/rooms/${roomCode.toUpperCase()}/`;
+        const apiUrl = `${window.location.protocol}//${window.location.host}/api/game/multiplayer/rooms/${roomCode.toUpperCase()}/`;
         
         try {
           const response = await fetch(apiUrl, {

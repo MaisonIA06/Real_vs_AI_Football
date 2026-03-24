@@ -136,8 +136,7 @@ export default function MultiplayerHostPage() {
           console.log('Using hostname from window.location:', hostname);
         }
         
-        // Utiliser le port 8080 (nginx) pour l'URL du QR code
-        const joinUrl = `${protocol}//${hostname}:8080/multiplayer/join/${code}`;
+        const joinUrl = `${protocol}//${hostname}/multiplayer/join/${code}`;
         setJoinUrl(joinUrl);
         
         console.log('Room created:', code);
@@ -255,7 +254,7 @@ export default function MultiplayerHostPage() {
   const updateJoinUrl = (ip: string) => {
     if (!roomCode) return;
     const protocol = window.location.protocol;
-    const joinUrl = `${protocol}//${ip}:8080/multiplayer/join/${roomCode}`;
+    const joinUrl = `${protocol}//${ip}/multiplayer/join/${roomCode}`;
     setJoinUrl(joinUrl);
   };
 

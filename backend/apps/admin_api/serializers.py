@@ -47,46 +47,13 @@ class MediaPairAdminSerializer(serializers.ModelSerializer):
             }
 
     def get_real_media(self, obj):
-        if obj.real_media:
-            request = self.context.get('request')
-            if request:
-                url = obj.real_media.url
-                if url.startswith('/'):
-                    scheme = request.scheme
-                    host = request.get_host()
-                    hostname = host.split(':')[0] if ':' in host else host
-                    return f"{scheme}://{hostname}:8080{url}"
-                return url
-            return obj.real_media.url if obj.real_media else None
-        return None
+        return obj.real_media.url if obj.real_media else None
 
     def get_ai_media(self, obj):
-        if obj.ai_media:
-            request = self.context.get('request')
-            if request:
-                url = obj.ai_media.url
-                if url.startswith('/'):
-                    scheme = request.scheme
-                    host = request.get_host()
-                    hostname = host.split(':')[0] if ':' in host else host
-                    return f"{scheme}://{hostname}:8080{url}"
-                return url
-            return obj.ai_media.url if obj.ai_media else None
-        return None
+        return obj.ai_media.url if obj.ai_media else None
 
     def get_audio_media(self, obj):
-        if obj.audio_media:
-            request = self.context.get('request')
-            if request:
-                url = obj.audio_media.url
-                if url.startswith('/'):
-                    scheme = request.scheme
-                    host = request.get_host()
-                    hostname = host.split(':')[0] if ':' in host else host
-                    return f"{scheme}://{hostname}:8080{url}"
-                return url
-            return obj.audio_media.url if obj.audio_media else None
-        return None
+        return obj.audio_media.url if obj.audio_media else None
 
 
 class MediaPairCreateSerializer(serializers.ModelSerializer):
