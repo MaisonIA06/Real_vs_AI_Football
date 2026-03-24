@@ -6,16 +6,10 @@ from .models import Category, MediaPair, GameSession, GameAnswer, GlobalStats
 
 
 def build_media_url(request, media_field):
-    """Construit une URL média via nginx (port 8080)."""
+    """Retourne l'URL relative du média (résolu par le navigateur)."""
     if not media_field:
         return None
-    url = media_field.url
-    if url.startswith('/'):
-        scheme = request.scheme
-        host = request.get_host()
-        hostname = host.split(':')[0] if ':' in host else host
-        return f"{scheme}://{hostname}:8080{url}"
-    return url
+    return media_field.url
 
 
 class CategorySerializer(serializers.ModelSerializer):
