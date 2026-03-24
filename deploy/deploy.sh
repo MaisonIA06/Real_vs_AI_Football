@@ -13,7 +13,7 @@ REMOTE_DIR="/opt/realvsai"
 echo "=== 1/4 Build du frontend ==="
 cd "$(dirname "$0")/.."
 cd frontend
-npm ci
+npm install
 npm run build
 cd ..
 
