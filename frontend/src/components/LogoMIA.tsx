@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface LogoMIAProps {
   size?: 'small' | 'medium' | 'large';
@@ -7,8 +7,11 @@ interface LogoMIAProps {
 
 export default function LogoMIA({ size = 'medium' }: LogoMIAProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [clickCount, setClickCount] = useState(0);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const isStudentMode = location.pathname.startsWith('/multiplayer/');
 
   const sizeClasses = {
     small: 'h-12 md:h-16',
@@ -17,7 +20,6 @@ export default function LogoMIA({ size = 'medium' }: LogoMIAProps) {
   };
 
   useEffect(() => {
-    // Réinitialiser le compteur après 2 secondes sans clic
     if (clickCount > 0) {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
@@ -35,11 +37,12 @@ export default function LogoMIA({ size = 'medium' }: LogoMIAProps) {
   }, [clickCount]);
 
   const handleClick = () => {
+    if (isStudentMode) return;
+
     const newCount = clickCount + 1;
     setClickCount(newCount);
 
     if (newCount >= 10) {
-      // Rediriger vers le dashboard admin
       navigate('/admin');
       setClickCount(0);
     }
@@ -51,7 +54,7 @@ export default function LogoMIA({ size = 'medium' }: LogoMIAProps) {
         src="/MIA_Couleur-01.png"
         alt="La Maison de l'IA"
         onClick={handleClick}
-        className={`${sizeClasses[size]} w-auto opacity-80 hover:opacity-100 transition-opacity cursor-pointer`}
+        className={`${sizeClasses[size]} w-auto opacity-80 ${isStudentMode ? '' : 'hover:opacity-100 cursor-pointer'} transition-opacity`}
         title="La Maison de l'IA"
       />
     </div>
