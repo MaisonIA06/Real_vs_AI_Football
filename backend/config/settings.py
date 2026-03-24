@@ -92,16 +92,15 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS Configuration
-# En mode DEBUG, autoriser toutes les origines pour le réseau local (classe)
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 else:
-    CORS_ALLOWED_ORIGINS = [
-        "http://localhost:5173",
-        "http://localhost:8080",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:8080",
-    ]
+    _cors_origins = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins.split(',') if o.strip()]
+    if not CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS = [
+            "http://localhost:8080",
+        ]
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
@@ -133,13 +132,22 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 20,
 }
 
-# Forcer le port pour les URLs absolues (si derrière un proxy)
+# Proxy headers
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
 
-# Ou définir explicitement le host et port
-if DEBUG:
-    # En développement, utiliser le port Nginx
+# CSRF Trusted Origins (obligatoire pour Django 4+ derrière un reverse proxy)
+_csrf_origins = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(',') if o.strip()]
+
+# Security settings for production
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+else:
     ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
 
 # =============================================================================

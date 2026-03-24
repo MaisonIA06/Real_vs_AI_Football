@@ -1,0 +1,72 @@
+# =============================================================================
+# Real vs AI — CI/CD Pipeline
+# =============================================================================
+# Déclenché sur push vers main :
+#   1. Build le frontend React
+#   2. Déploie sur le VPS via SSH
+#
+# Secrets GitHub à configurer (Settings > Secrets and variables > Actions) :
+#   VPS_HOST       — IP ou domaine du VPS (ex: 123.45.67.89)
+#   VPS_USER       — Utilisateur SSH (ex: root)
+#   VPS_SSH_KEY    — Clé privée SSH (contenu du fichier ~/.ssh/id_ed25519)
+# =============================================================================
+
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /opt/realvsai
+            git pull origin main
+            docker compose -f docker-compose.prod.yml up -d --build
+            echo "Backend deployed successfully"
+
+      - name: Upload frontend build to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "frontend/dist/"
+          target: "/opt/realvsai/"
+          overwrite: true
+
+      - name: Reload Nginx
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            sudo nginx -t && sudo systemctl reload nginx
+            echo "Deployment complete!"

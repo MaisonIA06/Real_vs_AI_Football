@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.git/
+.gitignore
+.env
+*.md
+.vscode/
+.idea/
+.cursor/
+media/pairs/
+staticfiles/

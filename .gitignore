@@ -1,0 +1,25 @@
+# Environment variables (NEVER commit)
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+backend/staticfiles/
+
+# Node
+node_modules/
+frontend/dist/
+
+# IDE
+.vscode/
+.idea/
+.cursor/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+postgres_data/
