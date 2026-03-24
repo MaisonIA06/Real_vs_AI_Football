@@ -2,13 +2,13 @@
 # Real vs AI — CI/CD Pipeline
 # =============================================================================
 # Déclenché sur push vers main :
-#   1. Build le frontend React
+#   1. Build le frontend React en CI
 #   2. Déploie sur le VPS via SSH
 #
 # Secrets GitHub à configurer (Settings > Secrets and variables > Actions) :
-#   VPS_HOST       — IP ou domaine du VPS (ex: 123.45.67.89)
-#   VPS_USER       — Utilisateur SSH (ex: root)
-#   VPS_SSH_KEY    — Clé privée SSH (contenu du fichier ~/.ssh/id_ed25519)
+#   VPS_HOST       — 204.168.174.92
+#   VPS_USER       — root (ou autre user SSH)
+#   VPS_SSH_KEY    — Clé privée SSH (contenu de ~/.ssh/id_ed25519)
 # =============================================================================
 
 name: Deploy to VPS
@@ -16,6 +16,7 @@ name: Deploy to VPS
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -39,7 +40,7 @@ jobs:
           npm ci
           npm run build
 
-      - name: Deploy to VPS
+      - name: Pull latest code on VPS
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -48,8 +49,6 @@ jobs:
           script: |
             cd /opt/realvsai
             git pull origin main
-            docker compose -f docker-compose.prod.yml up -d --build
-            echo "Backend deployed successfully"
 
       - name: Upload frontend build to VPS
         uses: appleboy/scp-action@v0.1.7
@@ -61,12 +60,15 @@ jobs:
           target: "/opt/realvsai/"
           overwrite: true
 
-      - name: Reload Nginx
+      - name: Rebuild and restart backend
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            cd /opt/realvsai
+            docker compose -f docker-compose.prod.yml up -d --build
             sudo nginx -t && sudo systemctl reload nginx
-            echo "Deployment complete!"
+            echo "=== Deployment complete ==="
+            docker compose -f docker-compose.prod.yml ps

@@ -1,27 +1,17 @@
 #!/bin/bash
 # =============================================================================
-# Real vs AI — Déploiement manuel (si le CI/CD n'est pas encore en place)
+# Real vs AI — Déploiement manuel
 # =============================================================================
 # Usage depuis ta machine locale :
-#   ./deploy/deploy.sh user@YOUR_VPS_IP
-#
-# Ce script :
-#   1. Build le frontend localement
-#   2. Envoie les fichiers sur le VPS
-#   3. Relance les conteneurs Docker
+#   ./deploy/deploy.sh
 # =============================================================================
 set -e
 
-if [ -z "$1" ]; then
-    echo "Usage: ./deploy/deploy.sh user@VPS_IP"
-    echo "Exemple: ./deploy/deploy.sh root@123.45.67.89"
-    exit 1
-fi
-
-VPS="$1"
+VPS="root@204.168.174.92"
 REMOTE_DIR="/opt/realvsai"
 
 echo "=== 1/4 Build du frontend ==="
+cd "$(dirname "$0")/.."
 cd frontend
 npm ci
 npm run build
@@ -38,4 +28,4 @@ ssh "$VPS" "sudo nginx -t && sudo systemctl reload nginx"
 
 echo ""
 echo "Déploiement terminé !"
-echo "Vérifie sur : https://realvsai.yourdomain.com"
+echo "Vérifie sur : http://204.168.174.92/"
