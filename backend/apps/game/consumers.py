@@ -124,44 +124,54 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
         }))
     
     async def handle_player_join(self, data):
-        """Player joins the room with a pseudo."""
+        """Player joins the room with a pseudo.
+
+        - Premier join: pas de session_token, le serveur crée le joueur et renvoie un token.
+        - Reconnexion: le client doit renvoyer le session_token reçu à la création.
+        - Un autre client qui tente de rejoindre avec un pseudo déjà pris est refusé.
+        """
         pseudo = data.get('pseudo', '').strip()
-        
+        session_token = (data.get('session_token') or '').strip() or None
+
         if not pseudo:
             await self.send_error("Pseudo required")
             return
-        
+
         if len(pseudo) > 50:
             await self.send_error("Pseudo too long (max 50 characters)")
             return
-        
+
         room = await self.get_room()
         if not room:
             await self.send_error("Room not found")
             return
-        
-        # Allow reconnection even if game has started (for players who were already in the room)
-        # Only block new players from joining if game is not waiting
-        
+
         # Create or update player (this handles reconnection)
-        player, created, error = await self.create_or_update_player(pseudo, room.status)
-        
+        player, created, error = await self.create_or_update_player(
+            pseudo, room.status, session_token=session_token,
+        )
+
         if error:
             await self.send_error(error)
             return
-        
+
         self.player_id = player.id
-        
+
         print(f"[WS] Player {player.pseudo} (ID: {player.id}) joined room {self.room_code}, channel: {self.channel_name}, room_status: {room.status}")
-        
-        # Send confirmation to player with room status for reconnection handling
-        await self.send(text_data=json.dumps({
+
+        # Send confirmation to player with room status for reconnection handling.
+        # Le session_token n'est renvoyé qu'au premier join (création) pour que le
+        # client le stocke; on ne le renvoie pas aux reconnexions légitimes.
+        response_payload = {
             'type': 'player.joined',
             'player_id': player.id,
             'pseudo': player.pseudo,
             'room_code': self.room_code,
             'room_status': room.status,
-        }))
+        }
+        if created:
+            response_payload['session_token'] = str(player.session_token)
+        await self.send(text_data=json.dumps(response_payload))
         
         # If game is in progress, send current question to the player (reconnection case)
         if room.status == 'playing':
@@ -458,31 +468,40 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
             return None
     
     @database_sync_to_async
-    def create_or_update_player(self, pseudo, room_status='waiting'):
-        """Create a new player or update existing one."""
+    def create_or_update_player(self, pseudo, room_status='waiting', session_token=None):
+        """Create a new player or update existing one.
+
+        Reconnexion: `session_token` doit matcher le token stocké sur le joueur.
+        Nouveau joueur: si le pseudo existe déjà (même déconnecté), on refuse pour
+        éviter l'usurpation par simple saisie du pseudo.
+        """
         try:
             room = MultiplayerRoom.objects.get(room_code=self.room_code)
-            
-            # Check if player was disconnected, reconnect them (allow reconnection anytime)
-            player = room.players.filter(pseudo__iexact=pseudo).first()
-            if player:
-                # Player exists - this is a reconnection
-                player.is_connected = True
-                player.channel_name = self.channel_name
-                player.save()
-                print(f"[DB] Player {pseudo} reconnected to room {self.room_code}")
-                return player, False, None
-            
-            # New player trying to join
+
+            existing_player = room.players.filter(pseudo__iexact=pseudo).first()
+
+            # Cas 1: un joueur existe déjà avec ce pseudo
+            if existing_player:
+                # Reconnexion légitime: session_token fourni et correct
+                if session_token and str(existing_player.session_token) == session_token:
+                    existing_player.is_connected = True
+                    existing_player.channel_name = self.channel_name
+                    existing_player.save()
+                    print(f"[DB] Player {pseudo} reconnected to room {self.room_code}")
+                    return existing_player, False, None
+
+                # Pas de token ou token invalide → refuser (usurpation potentielle)
+                logger.warning(
+                    "[WS] Tentative de join avec pseudo déjà pris sans token valide: "
+                    "room=%s pseudo=%s", self.room_code, pseudo,
+                )
+                return None, False, "Ce pseudo est déjà utilisé"
+
+            # Cas 2: nouveau joueur
             if room_status != 'waiting':
                 # Don't allow new players to join once game has started
                 return None, False, "La partie a déjà commencé"
-            
-            # Check if pseudo already taken by a connected player
-            existing = room.players.filter(pseudo__iexact=pseudo, is_connected=True).first()
-            if existing:
-                return None, False, "Ce pseudo est déjà utilisé"
-            
+
             # Create new player
             player = MultiplayerPlayer.objects.create(
                 room=room,
@@ -491,7 +510,7 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
             )
             print(f"[DB] New player {pseudo} created in room {self.room_code}")
             return player, True, None
-            
+
         except MultiplayerRoom.DoesNotExist:
             return None, False, "Room not found"
     

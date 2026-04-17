@@ -66,21 +66,27 @@ export default function MultiplayerPlayerPage() {
   }, [pseudo, hasActiveSession, normalizedRoomCode, navigate, sessionLoading]);
 
   // Callbacks
-  const handlePlayerJoined = useCallback((playerId: number, playerPseudo: string) => {
+  const handlePlayerJoined = useCallback((playerId: number, playerPseudo: string, sessionToken?: string) => {
     setScreen('waiting');
     setError(null);
     setIsReconnecting(false);
-    
-    // Save session for reconnection
+
+    // Save session for reconnection. Le token n'est renvoyé que lors du premier join
+    // (création du joueur côté serveur). Sur une reconnexion, on conserve le token
+    // précédemment stocké.
     if (pseudo && normalizedRoomCode) {
-      saveSession({
-        roomCode: normalizedRoomCode,
-        pseudo: pseudo,
-        sessionToken: '', // Will be updated if backend provides one
-        playerId: playerId,
-      });
+      if (sessionToken) {
+        saveSession({
+          roomCode: normalizedRoomCode,
+          pseudo: pseudo,
+          sessionToken,
+          playerId: playerId,
+        });
+      } else if (session) {
+        updateSession({ playerId });
+      }
     }
-  }, [pseudo, normalizedRoomCode, saveSession]);
+  }, [pseudo, normalizedRoomCode, saveSession, session, updateSession]);
 
   const handleGameStarted = useCallback((question: QuestionData) => {
     console.log('[Player] handleGameStarted called, question:', question);
@@ -138,6 +144,7 @@ export default function MultiplayerPlayerPage() {
   } = useMultiplayerSocket({
     roomCode: normalizedRoomCode,
     isHost: false,
+    initialSessionToken: session?.sessionToken || undefined,
     onPlayerJoined: handlePlayerJoined,
     onGameStarted: handleGameStarted,
     onNewQuestion: handleNewQuestion,

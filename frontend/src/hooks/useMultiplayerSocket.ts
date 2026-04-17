@@ -80,6 +80,8 @@ interface UseMultiplayerSocketOptions {
   roomCode: string;
   isHost?: boolean;
   hostToken?: string;
+  /** Token de session joueur (restauré depuis localStorage lors d'un refresh). */
+  initialSessionToken?: string;
   onPlayersUpdated?: (players: Player[]) => void;
   onGameStarted?: (question: QuestionData) => void;
   onNewQuestion?: (question: QuestionData) => void;
@@ -89,13 +91,14 @@ interface UseMultiplayerSocketOptions {
   onGameFinished?: (podium: PodiumPlayer[]) => void;
   onError?: (message: string) => void;
   onAnswerSubmitted?: (result: AnswerResult) => void;
-  onPlayerJoined?: (playerId: number, pseudo: string) => void;
+  onPlayerJoined?: (playerId: number, pseudo: string, sessionToken?: string) => void;
 }
 
 export function useMultiplayerSocket({
   roomCode,
   isHost = false,
   hostToken,
+  initialSessionToken,
   onPlayersUpdated,
   onGameStarted,
   onNewQuestion,
@@ -122,7 +125,15 @@ export function useMultiplayerSocket({
   
   // Store pseudo for reconnection
   const storedPseudoRef = useRef<string | null>(null);
+  const storedSessionTokenRef = useRef<string | null>(initialSessionToken ?? null);
   const hasJoinedRef = useRef(false);
+
+  // Keep token ref in sync if the initial value arrives later (async load from localStorage)
+  useEffect(() => {
+    if (initialSessionToken && !storedSessionTokenRef.current) {
+      storedSessionTokenRef.current = initialSessionToken;
+    }
+  }, [initialSessionToken]);
 
   // Refs for callbacks to avoid reconnection on callback change
   const callbacksRef = useRef({
@@ -193,10 +204,14 @@ export function useMultiplayerSocket({
         // For players: if we have a stored pseudo (reconnection), rejoin automatically
         if (storedPseudoRef.current && hasJoinedRef.current) {
           console.log('[WS] Reconnecting with stored pseudo:', storedPseudoRef.current);
-          ws.send(JSON.stringify({
+          const payload: Record<string, unknown> = {
             action: 'player.join',
             pseudo: storedPseudoRef.current,
-          }));
+          };
+          if (storedSessionTokenRef.current) {
+            payload.session_token = storedSessionTokenRef.current;
+          }
+          ws.send(JSON.stringify(payload));
         } else {
           setGameState('waiting');
         }
@@ -238,6 +253,10 @@ export function useMultiplayerSocket({
           case 'player.joined':
             console.log('[WS] Received player.joined, player_id:', data.player_id, 'room_status:', data.room_status);
             setPlayerId(data.player_id);
+            // Mémoriser le session_token s'il est fourni (premier join uniquement).
+            if (data.session_token) {
+              storedSessionTokenRef.current = data.session_token;
+            }
             // Update gameState based on room status (for reconnection)
             if (data.room_status === 'playing') {
               setGameState('playing');
@@ -249,7 +268,7 @@ export function useMultiplayerSocket({
               setGameState('waiting');
             }
             if (callbacks.onPlayerJoined) {
-              callbacks.onPlayerJoined(data.player_id, data.pseudo);
+              callbacks.onPlayerJoined(data.player_id, data.pseudo, data.session_token);
               console.log('[WS] onPlayerJoined callback executed');
             }
             break;
@@ -350,10 +369,15 @@ export function useMultiplayerSocket({
       storedPseudoRef.current = pseudo;
       hasJoinedRef.current = true;
       console.log('[WS] Joining as player with pseudo:', pseudo);
-      wsRef.current.send(JSON.stringify({
+      const payload: Record<string, unknown> = {
         action: 'player.join',
         pseudo,
-      }));
+      };
+      // Si on a un token mémorisé (restauré d'un refresh), l'envoyer pour se ré-authentifier.
+      if (storedSessionTokenRef.current) {
+        payload.session_token = storedSessionTokenRef.current;
+      }
+      wsRef.current.send(JSON.stringify(payload));
     }
   }, []);
 
