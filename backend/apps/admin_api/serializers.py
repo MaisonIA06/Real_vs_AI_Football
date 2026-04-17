@@ -1,9 +1,37 @@
 """
 Serializers for the admin API.
 """
+import os
+
 from rest_framework import serializers
 from django.conf import settings
 from apps.game.models import Category, MediaPair, GameSession, GlobalStats
+
+
+# Whitelist stricte d'extensions par type de média. Toute autre extension
+# (.html, .svg, .js, .exe, etc.) est refusée pour empêcher l'upload de
+# fichiers exécutés par le navigateur depuis /media/ (stored XSS).
+ALLOWED_EXTENSIONS = {
+    'image': {'.jpg', '.jpeg', '.png', '.webp', '.gif'},
+    'video': {'.mp4', '.webm'},
+    'audio': {'.mp3', '.wav', '.ogg', '.m4a'},
+}
+
+
+def _validate_extension(uploaded_file, media_type, field_name):
+    """Vérifie que l'extension du fichier est autorisée pour le media_type."""
+    if uploaded_file in (None, ''):
+        return
+    name = getattr(uploaded_file, 'name', '') or ''
+    ext = os.path.splitext(name)[1].lower()
+    allowed = ALLOWED_EXTENSIONS.get(media_type, set())
+    if ext not in allowed:
+        raise serializers.ValidationError({
+            field_name: (
+                f"Extension '{ext or '(aucune)'}' non autorisée pour le type "
+                f"{media_type}. Extensions acceptées : {sorted(allowed)}."
+            )
+        })
 
 
 class CategoryAdminSerializer(serializers.ModelSerializer):
@@ -60,6 +88,24 @@ class MediaPairCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = MediaPair
         fields = ['category', 'real_media', 'ai_media', 'audio_media', 'is_real', 'media_type', 'difficulty', 'hint', 'is_active']
+
+    def validate(self, attrs):
+        # Pour une mise à jour partielle, récupérer la valeur actuelle si absente.
+        instance = getattr(self, 'instance', None)
+
+        media_type = attrs.get(
+            'media_type',
+            getattr(instance, 'media_type', None),
+        )
+        if not media_type:
+            return attrs
+
+        # Pour chaque fichier fourni dans cette requête, vérifier l'extension.
+        for field_name in ('real_media', 'ai_media', 'audio_media'):
+            if field_name in attrs:
+                _validate_extension(attrs.get(field_name), media_type, field_name)
+
+        return attrs
 
 
 class DashboardStatsSerializer(serializers.Serializer):
