@@ -252,9 +252,12 @@ class MultiplayerRoomCreateView(APIView):
         # Create room
         room = MultiplayerRoom.objects.create()
 
+        # Le host_token n'est renvoyé QU'À la création, jamais dans le GET détail.
+        # C'est la seule preuve que le client est bien l'hôte légitime.
         return Response({
             'id': room.id,
             'room_code': room.room_code,
+            'host_token': str(room.host_token),
             'quiz': None,
             'status': room.status,
             'created_at': room.created_at.isoformat(),
@@ -274,6 +277,7 @@ class MultiplayerRoomDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        # Ne JAMAIS retourner host_token ici — cette route est publique.
         return Response({
             'id': room.id,
             'room_code': room.room_code,

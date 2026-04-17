@@ -241,6 +241,11 @@ class MultiplayerRoom(models.Model):
         default=generate_room_code,
         help_text="Code unique de la room (6 caractères)"
     )
+    host_token = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        help_text="Token secret de l'hôte, requis pour prendre le contrôle de la room"
+    )
     status = models.CharField(
         max_length=20,
         choices=RoomStatus.choices,

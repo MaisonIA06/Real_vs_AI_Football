@@ -79,6 +79,7 @@ type GameState = 'connecting' | 'waiting' | 'playing' | 'showing_answer' | 'fini
 interface UseMultiplayerSocketOptions {
   roomCode: string;
   isHost?: boolean;
+  hostToken?: string;
   onPlayersUpdated?: (players: Player[]) => void;
   onGameStarted?: (question: QuestionData) => void;
   onNewQuestion?: (question: QuestionData) => void;
@@ -94,6 +95,7 @@ interface UseMultiplayerSocketOptions {
 export function useMultiplayerSocket({
   roomCode,
   isHost = false,
+  hostToken,
   onPlayersUpdated,
   onGameStarted,
   onNewQuestion,
@@ -177,9 +179,15 @@ export function useMultiplayerSocket({
       setIsConnected(true);
       reconnectAttempts.current = 0;
 
-      // If host, send host.join message
+      // If host, send host.join message (with host_token for auth)
       if (isHost) {
-        ws.send(JSON.stringify({ action: 'host.join' }));
+        if (!hostToken) {
+          console.error('[WS] Cannot join as host without host_token');
+          setGameState('error');
+          ws.close();
+          return;
+        }
+        ws.send(JSON.stringify({ action: 'host.join', host_token: hostToken }));
         setGameState('waiting');
       } else {
         // For players: if we have a stored pseudo (reconnection), rejoin automatically

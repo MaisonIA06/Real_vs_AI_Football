@@ -129,6 +129,7 @@ export const gameApi = {
 export interface MultiplayerRoom {
   id: number;
   room_code: string;
+  host_token?: string; // Renvoyé uniquement à la création (POST), jamais dans le GET
   status: 'waiting' | 'playing' | 'showing_answer' | 'finished';
   created_at: string;
 }

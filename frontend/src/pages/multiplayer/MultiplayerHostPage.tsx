@@ -74,6 +74,7 @@ export default function MultiplayerHostPage() {
   const [searchParams] = useSearchParams();
 
   const [roomCode, setRoomCode] = useState<string | null>(null);
+  const [hostToken, setHostToken] = useState<string | null>(null);
   const [joinUrl, setJoinUrl] = useState<string>('');
   const [detectedIp, setDetectedIp] = useState<string>('');
   const [customIp, setCustomIp] = useState<string>('');
@@ -112,6 +113,10 @@ export default function MultiplayerHostPage() {
         const response = await gameApi.createMultiplayerRoom(undefined); // Toujours undefined pour quizId
         const code = response.data.room_code;
         setRoomCode(code);
+        // Stocker le host_token reçu à la création (renvoyé UNIQUEMENT ici)
+        if (response.data.host_token) {
+          setHostToken(response.data.host_token);
+        }
         
         // Construire l'URL : utiliser l'IP LAN si disponible, sinon window.location
         const currentUrl = new URL(window.location.href);
@@ -201,6 +206,7 @@ export default function MultiplayerHostPage() {
   } = useMultiplayerSocket({
     roomCode: roomCode ?? '', // Only connect when roomCode is set
     isHost: true,
+    hostToken: hostToken ?? undefined,
     onGameStarted: handleGameStarted,
     onNewQuestion: handleNewQuestion,
     onAnswerRevealed: handleAnswerRevealed,

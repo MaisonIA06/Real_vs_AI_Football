@@ -88,17 +88,34 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
     # ========================================
     
     async def handle_host_join(self, data):
-        """Host joins and creates/connects to the room."""
-        self.is_host = True
-        print(f"[WS] Host joined room {self.room_code}, channel: {self.channel_name}")
-        
+        """Host joins and creates/connects to the room.
+
+        Requires a valid `host_token` matching the one stored on the room
+        (returned only to the creator via POST /api/game/multiplayer/rooms/).
+        """
+        host_token = (data.get('host_token') or '').strip()
+        if not host_token:
+            await self.send_error("host_token requis")
+            return
+
         room = await self.get_room()
         if not room:
             await self.send_error("Room not found")
             return
-        
+
+        if str(room.host_token) != host_token:
+            logger.warning(
+                "[WS] Tentative d'usurpation d'hôte pour la room %s (channel=%s)",
+                self.room_code, self.channel_name,
+            )
+            await self.send_error("host_token invalide")
+            return
+
+        self.is_host = True
+        print(f"[WS] Host joined room {self.room_code}, channel: {self.channel_name}")
+
         players = await self.get_players_list()
-        
+
         await self.send(text_data=json.dumps({
             'type': 'host.joined',
             'room_code': self.room_code,
