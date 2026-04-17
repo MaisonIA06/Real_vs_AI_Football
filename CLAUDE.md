@@ -105,7 +105,13 @@ Points d'entrée frontend du mode live : `pages/multiplayer/MultiplayerHostPage.
 ## À savoir
 
 - `request.session` est utilisé en solo pour persister le mapping réel/IA gauche-droite, afin que le client n'ait jamais la réponse en clair. Tout refactor cassant la gestion des cookies de session cassera le scoring.
-- Les endpoints de l'API admin sont en `AllowAny`. Si on ajoute de l'auth, la traiter uniformément — les pages admin du frontend n'envoient aucun header d'auth aujourd'hui.
+- **API admin sans auth applicative** : les endpoints `/api/admin/*` sont en `AllowAny` (DRF). La protection repose **uniquement** sur l'`auth_basic` Nginx (`deploy/nginx-realvsai.conf`) en prod. Limitation acceptée : en dev ou sur tout déploiement sans ce Nginx, l'API admin est ouverte au LAN. Si on ajoute une vraie auth applicative, les pages admin du frontend devront gérer un login (elles n'envoient aucun header d'auth aujourd'hui).
 - `CORS_ALLOW_ALL_ORIGINS = True` quand `DEBUG=True` ; en prod, lecture de `CORS_ALLOWED_ORIGINS` et `CSRF_TRUSTED_ORIGINS` depuis l'env.
+
+## Sécurité multijoueur (à respecter lors de modifs)
+
+- **`host_token`** (UUID sur `MultiplayerRoom`) : renvoyé **uniquement** par `POST /api/game/multiplayer/rooms/`, **jamais** par le `GET`. Requis dans le payload `host.join` du WebSocket pour obtenir `is_host=True`. Sans ça, n'importe quel élève peut prendre le contrôle de la partie.
+- **`session_token`** (UUID sur `MultiplayerPlayer`) : renvoyé uniquement au premier `player.join` d'un pseudo donné. Toute reconnexion ou join ultérieur sur un pseudo déjà pris doit fournir ce token, sinon c'est refusé (sinon : un attaquant taperait le pseudo d'un autre joueur et hériterait de sa session).
+- **Uploads `/api/admin/media-pairs/`** : les extensions sont whitelistées dans `MediaPairCreateSerializer.validate()` selon `media_type`. Ne pas désactiver cette validation — combiné avec Nginx servant `/media/` en statique, un `.html` ou `.svg` accepté devient du stored XSS sous l'origine de l'application. Les headers `X-Content-Type-Options: nosniff` et la CSP sur `/media/` sont la défense en profondeur.
 - Les `Real_VS_AI.desktop` / `Stop_Real_VS_AI.desktop` + `scripts/start-kiosk.*` servent à lancer l'app en plein écran sur une machine kiosque — inutile en dev.
 - Les notes de planification d'anciens travaux sont dans `.cursor/plans/` (historique, pas des instructions).
