@@ -2,12 +2,15 @@
 WebSocket consumers for multiplayer game.
 """
 import json
+import logging
 import random
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.utils import timezone
 
 from .models import MultiplayerRoom, MultiplayerPlayer, MultiplayerAnswer, MediaPair
+
+logger = logging.getLogger(__name__)
 
 
 class MultiplayerConsumer(AsyncWebsocketConsumer):
@@ -76,8 +79,9 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
                 
         except json.JSONDecodeError:
             await self.send_error("Invalid JSON")
-        except Exception as e:
-            await self.send_error(str(e))
+        except Exception:
+            logger.exception("Unhandled error in WebSocket receive")
+            await self.send_error("Erreur interne")
     
     # ========================================
     # Action Handlers
@@ -676,8 +680,9 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
                 'pseudo': player.pseudo,
             }
             
-        except Exception as e:
-            return {'error': str(e)}
+        except Exception:
+            logger.exception("Error while submitting multiplayer answer")
+            return {'error': 'Erreur interne lors de la soumission'}
     
     @database_sync_to_async
     def check_all_answered(self):
