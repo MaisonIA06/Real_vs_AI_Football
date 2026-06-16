@@ -26,7 +26,7 @@ systemctl enable nginx
 echo "=== 4/6 Clone du repo ==="
 mkdir -p /opt/realvsai
 if [ ! -d "/opt/realvsai/.git" ]; then
-    git clone https://github.com/MIA-Music-Integrity-Analysis/Real_VS_AI.git /opt/realvsai
+    git clone https://github.com/MaisonIA06/Real_VS_AI_Football.git /opt/realvsai
     echo "Repo cloné. MODIFIE l'URL ci-dessus si le repo est différent."
 else
     echo "Repo déjà cloné dans /opt/realvsai"
