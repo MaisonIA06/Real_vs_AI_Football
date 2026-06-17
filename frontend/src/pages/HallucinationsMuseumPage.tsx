@@ -25,53 +25,63 @@ interface Exhibit {
 const exhibits: Exhibit[] = [
   {
     id: 1,
-    title: "L'Anatomie Impossible",
-    subtitle: "Le syndrome du 6ème doigt",
-    image: "/l'anatomie impossible.png",
-    hallucination: "Les mains, les dents et les membres fusionnés sont les points faibles historiques des modèles génératifs.",
-    explanation: "L'IA ne comprend pas la structure squelettique ou biologique. Elle 'sait' que des doigts apparaissent souvent près d'une main, mais elle ne compte pas. Pour elle, une main est une texture complexe de formes oblongues.",
-    tip: "Comptez toujours les doigts et vérifiez l'articulation des membres. Regardez si les dents sont trop nombreuses ou fusionnées.",
-    imagePlaceholder: "🖐️"
+    title: "Ombres & Lumière",
+    subtitle: "Le soleil à deux endroits",
+    image: "/ombres-lumiere.png",
+    hallucination: "Des ombres qui partent dans des directions différentes, ou un personnage éclairé comme s'il y avait deux soleils.",
+    explanation: "L'IA assemble une image jolie sans tenir de « plan » cohérent de la lumière. Chaque ombre est crédible prise seule, mais l'ensemble ne tient pas physiquement. C'est l'un des indices les plus fiables en 2026.",
+    tip: "Repérez la source de lumière, puis vérifiez que toutes les ombres vont dans le même sens. Une ombre absente, ou un objet posé sans ombre au sol, est très suspect.",
+    imagePlaceholder: "🔦"
   },
   {
     id: 2,
-    title: "Le Texte Fantôme",
-    subtitle: "L'écriture de l'espace",
-    image: "/le texte fantôme.png",
-    hallucination: "Les glyphes qui ressemblent à du texte mais ne veulent rien dire, ou des lettres qui mutent.",
-    explanation: "Les modèles d'IA traitent le texte comme des motifs visuels et non comme des symboles sémantiques. Ils reproduisent l'esthétique d'une police de caractères sans en comprendre la grammaire ou l'alphabet.",
-    tip: "Essayez de lire les panneaux, les étiquettes ou les logos en arrière-plan. Si c'est illisible ou dans une langue inexistante, c'est une IA.",
-    imagePlaceholder: "📝"
+    title: "Le Décor qui Déraille",
+    subtitle: "Net devant, n'importe quoi derrière",
+    image: "/arriere-plan.png",
+    hallucination: "Le sujet principal est parfait, mais derrière lui les objets se déforment, l'architecture devient impossible et les passants ont des visages flous ou dédoublés.",
+    explanation: "L'IA concentre ses efforts sur le sujet central. Plus on s'éloigne au second plan, moins elle « fait attention » : les lignes ondulent, les fenêtres ne s'alignent plus, les silhouettes fondent.",
+    tip: "Ne regardez pas que le sujet : fouillez l'arrière-plan. Lignes droites qui gondolent, escaliers qui ne mènent nulle part, visages de foule identiques ou flous = signal d'alerte.",
+    imagePlaceholder: "🏙️"
   },
   {
     id: 3,
-    title: "Reflets Incohérents",
-    subtitle: "Le miroir brisé",
-    image: "/reflets incohérents.png",
-    hallucination: "Des reflets dans les yeux ou sur l'eau qui ne correspondent pas à la scène environnante.",
-    explanation: "L'IA génère les pixels par probabilité locale. Elle peut créer un magnifique paysage et un reflet d'eau, mais elle oublie souvent de lier mathématiquement la symétrie entre l'objet et son reflet.",
-    tip: "Regardez les pupilles : le reflet de la source de lumière doit être identique des deux côtés. Vérifiez si les ombres tombent dans la même direction.",
-    imagePlaceholder: "🪞"
+    title: "Le Copier-Coller Invisible",
+    subtitle: "Les motifs qui se répètent",
+    image: "/details-repetes.png",
+    hallucination: "Des visages qui se ressemblent trop dans une foule, des briques, fenêtres ou pavés identiques, des motifs de tissu parfaitement réguliers.",
+    explanation: "Pour remplir une zone, l'IA réutilise des motifs très similaires. Le réel a toujours de petites variations ; l'IA, elle, tombe vite dans la répétition trop nette.",
+    tip: "Cherchez les éléments qui se dupliquent : deux passants au même visage, une rangée de fenêtres trop identiques, un motif qui ne suit pas les plis du tissu.",
+    imagePlaceholder: "🧩"
   },
   {
     id: 4,
-    title: "La Fusion des Objets",
-    subtitle: "L'erreur de segmentation",
-    image: "/La Fusion des objets.png",
-    hallucination: "Un vêtement qui devient de la peau, ou un sac à main qui sort directement du bras d'une personne.",
-    explanation: "Ce qu'on appelle la 'segmentation' est difficile pour l'IA. Elle a du mal à définir où s'arrête un objet et où commence un autre, surtout quand les couleurs sont similaires.",
-    tip: "Suivez les lignes de contour des objets. Cherchez les endroits où deux textures différentes semblent se mélanger de façon organique mais illogique.",
-    imagePlaceholder: "🌀"
+    title: "Les Accessoires Fantômes",
+    subtitle: "Ce qui ne tient pas ensemble",
+    image: "/accessoires.png",
+    hallucination: "Des branches de lunettes qui traversent le visage, des boucles d'oreilles dépareillées, un collier ou une bretelle qui disparaît puis réapparaît, une fermeture éclair qui ne mène nulle part.",
+    explanation: "Les petits objets qui relient deux points (lunettes, bijoux, sangles, boutons) demandent une cohérence d'un bout à l'autre. L'IA gère mal ce « suivi » et les fait se fondre ou disparaître.",
+    tip: "Suivez chaque accessoire du regard d'un bout à l'autre : la branche de lunettes va-t-elle jusqu'à l'oreille ? Les deux boucles d'oreilles sont-elles assorties ? La sangle est-elle continue ?",
+    imagePlaceholder: "👓"
   },
   {
     id: 5,
-    title: "Lissage de Porcelaine",
-    subtitle: "La vallée de l'étrange",
-    image: "/lissage de porcelaine.png",
-    hallucination: "Des visages trop parfaits, sans pores, sans rides, avec une texture rappelant le plastique ou la cire.",
-    explanation: "Pour réduire le 'bruit' visuel, les IA ont tendance à sur-lisser les surfaces. Cela donne cet aspect 'filtre beauté' extrême qui supprime les micro-détails de la peau humaine réelle.",
-    tip: "Zoomez sur la peau. L'absence de pores, de petits duvets, ou de légères imperfections asymétriques est un signe majeur de génération artificielle.",
+    title: "Trop Beau pour Être Vrai",
+    subtitle: "L'absence de défaut est le défaut",
+    image: "/trop-parfait.png",
+    hallucination: "Un éclairage de studio idéal, une peau sans pores, un flou d'arrière-plan crémeux, des couleurs ultra-saturées : une image « parfaite » sur toute la ligne.",
+    explanation: "Les IA visent l'esthétique la plus léchée possible. Résultat : une perfection un peu artificielle, sans le grain, les imperfections et le hasard d'une vraie photo.",
+    tip: "Méfiez-vous des images trop léchées. Une vraie photo a presque toujours un petit défaut : grain, reflet parasite, cadrage imparfait, peau réelle.",
     imagePlaceholder: "✨"
+  },
+  {
+    id: 6,
+    title: "Ce qui ne Colle Pas",
+    subtitle: "Le détail logique impossible",
+    image: "/incoherences-logiques.png",
+    hallucination: "Un reflet qui ne correspond pas, un petit panneau en charabia, une horloge dont l'heure n'a aucun sens, une main qui tient un objet… qui n'existe pas vraiment.",
+    explanation: "L'IA imite l'apparence du monde sans en comprendre les règles. Tant qu'on regarde vite, c'est crédible ; dès qu'on raisonne, des absurdités apparaissent.",
+    tip: "Prenez deux secondes pour « raisonner » l'image : ce reflet est-il logique ? Ce texte veut-il dire quelque chose ? Cette ombre correspond-elle à un objet réel ?",
+    imagePlaceholder: "🔍"
   }
 ];
 
