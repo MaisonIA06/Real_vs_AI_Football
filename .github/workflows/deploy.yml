@@ -54,7 +54,10 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           source: "frontend/dist/"
           target: "/opt/realvsai/"
-          rm: true
+          # rm: false (défaut) — surtout PAS true : avec target=/opt/realvsai/,
+          # rm:true effacerait tout le dépôt (docker-compose, deploy/, backend/…)
+          # juste après le git pull, et le build suivant ne trouverait plus rien.
+          rm: false
 
       - name: Rebuild backend and reload Nginx
         uses: appleboy/ssh-action@v1
