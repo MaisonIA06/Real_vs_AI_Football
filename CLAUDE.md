@@ -38,11 +38,15 @@ docker compose down          # conserve le volume DB
 docker compose down -v       # détruit le volume DB (relancer populate_pairs après)
 ```
 
-Il n'y a pas de runner de tests, de linter ou de script de type-check configurés dans le repo. Pour des tests Django, lancer `python manage.py test` dans le conteneur backend ; pour un type-check, `tsc --noEmit` dans le conteneur frontend.
+Il n'y a pas de runner de tests, de linter ou de script de type-check configurés dans le repo (aucun fichier de test n'existe à ce jour). Pour des tests Django, lancer `python manage.py test` dans le conteneur backend ; pour un test unique, `python manage.py test apps.game.tests.MaClasse.ma_methode`. Pour un type-check, `tsc --noEmit` dans le conteneur frontend.
 
 ## Déploiement production
 
 `docker-compose.prod.yml` ne lance que `db` + `redis` + `backend` (bindé sur `127.0.0.1:8001`). Le frontend est buildé en CI (`.github/workflows/deploy.yml`) puis SCP vers le VPS ; le Nginx de l'hôte (`deploy/nginx-realvsai.conf`) sert `frontend/dist` et proxifie `/api/`, `/ws/`, `/media/`, `/admin/` vers Daphne. Chaque push sur `main` déclenche le déploiement complet.
+
+Le Nginx prod applique un `auth_basic 'equipe'` **global** (htpasswd), avec des exceptions explicites qui ouvrent les routes publiques au LAN : `/api/game/`, `/ws/`, `/media/`, `/multiplayer/`. C'est cet `auth_basic` qui protège l'API admin (cf. « API admin sans auth applicative » ci-dessous).
+
+Scripts de déploiement (à lancer sur le VPS, hors CI) : `deploy/setup-vps.sh` provisionne la machine au premier déploiement (Docker, Nginx, `.env`, htpasswd, clone) ; `deploy/deploy.sh` rejoue un déploiement manuel (build frontend, rsync `dist`, `git pull`, `docker compose -f docker-compose.prod.yml up -d --build`, reload Nginx).
 
 ## Architecture
 
