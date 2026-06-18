@@ -581,18 +581,20 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
             'difficulty': pair.difficulty,
         }
         
+        # URLs opaques (constat B) : ne révèlent ni réel/IA ni le suffixe _AI.
+        # is_real (réponse audio) n'est PAS envoyé dans la question — il ne l'est
+        # qu'au moment de révéler la réponse (get_answer_data).
         if pair.media_type == 'audio':
-            data['audio_media'] = pair.audio_media.url if pair.audio_media else None
-            data['is_real'] = pair.is_real
+            data['audio_media'] = pair.opaque_media_url('audio')
         else:
             # Position real and AI media based on random position
             if ai_position == 'left':
-                data['left_media'] = pair.ai_media.url if pair.ai_media else None
-                data['right_media'] = pair.real_media.url if pair.real_media else None
+                data['left_media'] = pair.opaque_media_url('ai')
+                data['right_media'] = pair.opaque_media_url('real')
             else:
-                data['left_media'] = pair.real_media.url if pair.real_media else None
-                data['right_media'] = pair.ai_media.url if pair.ai_media else None
-        
+                data['left_media'] = pair.opaque_media_url('real')
+                data['right_media'] = pair.opaque_media_url('ai')
+
         return data
     
     @database_sync_to_async

@@ -1,6 +1,8 @@
 """
 Models for the Real vs AI game.
 """
+import hashlib
+import hmac
 import os
 import uuid
 from django.db import models
@@ -123,11 +125,97 @@ class MediaPair(models.Model):
                 except Exception:
                     pass  # Ignorer les erreurs de suppression
 
+    # --- URLs/symlinks opaques (constat B : ne pas révéler réel/IA dans l'URL) ---
+
+    _SIDE_FIELDS = ('real', 'ai', 'audio')
+
+    def _media_field_for_side(self, side):
+        return {
+            'real': self.real_media,
+            'ai': self.ai_media,
+            'audio': self.audio_media,
+        }.get(side)
+
+    def opaque_token(self, side):
+        """Jeton opaque (HMAC-SHA256 tronqué) pour un côté donné. Inimitable
+        sans SECRET_KEY ; ne révèle pas le statut réel/IA du média."""
+        msg = f"{self.pk}:{side}".encode()
+        return hmac.new(settings.SECRET_KEY.encode(), msg, hashlib.sha256).hexdigest()[:40]
+
+    def opaque_media_url(self, side):
+        """URL opaque `/media/q/<jeton><ext>` pour le média d'un côté, ou None."""
+        field = self._media_field_for_side(side)
+        if not field:
+            return None
+        ext = os.path.splitext(field.name)[1].lower()
+        media_url = settings.MEDIA_URL
+        if not media_url.startswith('/'):
+            media_url = '/' + media_url
+        if not media_url.endswith('/'):
+            media_url += '/'
+        return f"{media_url}q/{self.opaque_token(side)}{ext}"
+
+    def _opaque_link_path(self, side, ext):
+        return os.path.join(settings.MEDIA_ROOT, 'q', f"{self.opaque_token(side)}{ext}")
+
+    def sync_opaque_links(self):
+        """(Re)crée les symlinks opaques `media/q/<jeton><ext>` -> fichier réel.
+        Nginx sert `/media/q/` en statique (Range HTTP OK) sans révéler le chemin."""
+        q_dir = os.path.join(settings.MEDIA_ROOT, 'q')
+        os.makedirs(q_dir, exist_ok=True)
+        for side in self._SIDE_FIELDS:
+            field = self._media_field_for_side(side)
+            if not field:
+                continue
+            try:
+                target = field.path
+            except (ValueError, NotImplementedError):
+                continue
+            if not os.path.isfile(target):
+                continue
+            ext = os.path.splitext(field.name)[1].lower()
+            link_path = self._opaque_link_path(side, ext)
+            rel_target = os.path.relpath(target, q_dir)
+            # Création atomique : symlink vers un nom temporaire puis os.replace,
+            # pour éviter une course remove->symlink (lien manquant = 404).
+            tmp_path = f"{link_path}.tmp-{os.getpid()}"
+            try:
+                if os.path.islink(tmp_path) or os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+                os.symlink(rel_target, tmp_path)
+                os.replace(tmp_path, link_path)
+            except OSError:
+                try:
+                    os.remove(tmp_path)
+                except OSError:
+                    pass
+
+    def remove_opaque_links(self):
+        """Supprime les symlinks opaques associés (suppression de la paire)."""
+        for side in self._SIDE_FIELDS:
+            field = self._media_field_for_side(side)
+            if not field:
+                continue
+            ext = os.path.splitext(field.name)[1].lower()
+            link_path = self._opaque_link_path(side, ext)
+            try:
+                if os.path.islink(link_path) or os.path.exists(link_path):
+                    os.remove(link_path)
+            except OSError:
+                pass
+
+
+@receiver(post_save, sender=MediaPair)
+def sync_opaque_links_on_save(sender, instance, **kwargs):
+    """Maintient les symlinks opaques à jour à chaque sauvegarde de paire."""
+    instance.sync_opaque_links()
+
 
 @receiver(post_delete, sender=MediaPair)
 def delete_media_files_on_delete(sender, instance, **kwargs):
-    """Signal pour supprimer les fichiers médias lorsqu'un MediaPair est supprimé."""
+    """Signal pour supprimer fichiers médias + symlinks à la suppression d'un MediaPair."""
     instance.delete_media_files()
+    instance.remove_opaque_links()
 
 
 class GameSession(models.Model):

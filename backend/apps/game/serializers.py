@@ -5,13 +5,6 @@ from rest_framework import serializers
 from .models import Category, MediaPair, GameSession, GameAnswer, GlobalStats
 
 
-def build_media_url(request, media_field):
-    """Retourne l'URL relative du média (résolu par le navigateur)."""
-    if not media_field:
-        return None
-    return media_field.url
-
-
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
@@ -32,35 +25,29 @@ class MediaPairGameSerializer(serializers.ModelSerializer):
         fields = ['id', 'category', 'media_type', 'difficulty', 'left_media', 'right_media', 'audio_media', 'real_position', 'is_real']
 
     def get_left_media(self, obj):
-        """For image/video: left media (real or AI depending on position)."""
+        """For image/video: left media (real or AI depending on position).
+
+        URL opaque (constat B) : ne révèle pas le statut réel/IA.
+        """
         if obj.media_type == 'audio':
             return None
-        request = self.context.get('request')
         positions = self.context.get('positions', {})
         pos = positions.get(obj.id, 'left')
-        
-        if pos == 'left':
-            return build_media_url(request, obj.real_media)
-        return build_media_url(request, obj.ai_media)
+        return obj.opaque_media_url('real' if pos == 'left' else 'ai')
 
     def get_right_media(self, obj):
         """For image/video: right media (real or AI depending on position)."""
         if obj.media_type == 'audio':
             return None
-        request = self.context.get('request')
         positions = self.context.get('positions', {})
         pos = positions.get(obj.id, 'left')
-        
-        if pos == 'right':
-            return build_media_url(request, obj.real_media)
-        return build_media_url(request, obj.ai_media)
+        return obj.opaque_media_url('real' if pos == 'right' else 'ai')
 
     def get_audio_media(self, obj):
-        """For audio: the audio file URL."""
+        """For audio: the audio file URL (opaque)."""
         if obj.media_type != 'audio':
             return None
-        request = self.context.get('request')
-        return build_media_url(request, obj.audio_media)
+        return obj.opaque_media_url('audio')
 
     def get_is_real(self, obj):
         """For audio: whether it's real (only revealed after answer)."""
