@@ -21,7 +21,11 @@ services:
     image: redis:7-alpine
     container_name: realvsai_redis
     ports:
-      - "6379:6379"
+      # D : bind localhost uniquement — Redis (sans auth, porte le channel layer
+      # multijoueur dont ai_positions) ne doit PAS être joignable depuis le LAN.
+      # Nginx (8080) reste le seul point d'entrée LAN ; il atteint redis/backend/
+      # frontend via le réseau Docker, pas via ces mappings hôte.
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -47,7 +51,8 @@ services:
       DJANGO_DEBUG: ${DJANGO_DEBUG:-True}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,*}
     ports:
-      - "8000:8000"
+      # D : bind localhost uniquement (accès direct au backend pour debug, pas LAN)
+      - "127.0.0.1:8000:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -68,7 +73,9 @@ services:
     environment:
       VITE_API_URL: ${VITE_API_URL:-}
     ports:
-      - "5173:5173"
+      # D : bind localhost uniquement (Vite dev server accessible en local, pas LAN ;
+      # les tablettes passent par Nginx 8080 qui proxifie le HMR)
+      - "127.0.0.1:5173:5173"
     command: npm run dev -- --host 0.0.0.0
 
   nginx:
