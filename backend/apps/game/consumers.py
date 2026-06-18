@@ -356,6 +356,10 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
     
     async def handle_game_end(self, data):
         """End the game and show final results."""
+        if not self.is_host:
+            await self.send_error("Only host can control the game")
+            return
+
         await self.set_room_status('finished')
         
         podium = await self.get_podium_data()
