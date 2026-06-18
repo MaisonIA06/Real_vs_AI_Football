@@ -25,6 +25,46 @@ const api = axios.create({
   withCredentials: false,
 });
 
+// --- Authentification admin (DRF TokenAuthentication) ---
+const ADMIN_TOKEN_KEY = 'admin_token';
+export const getAdminToken = (): string | null => localStorage.getItem(ADMIN_TOKEN_KEY);
+export const setAdminToken = (token: string) => localStorage.setItem(ADMIN_TOKEN_KEY, token);
+export const clearAdminToken = () => localStorage.removeItem(ADMIN_TOKEN_KEY);
+
+// Route admin protégée (nécessite le token), hors endpoint de login.
+const isProtectedAdminUrl = (url: string) =>
+  url.includes('/admin/') && !url.includes('/admin/auth/');
+
+// Joindre le token UNIQUEMENT aux routes admin protégées. Les routes de jeu
+// sont publiques : y envoyer un token invalide provoquerait un 401 inutile.
+api.interceptors.request.use((config) => {
+  if (isProtectedAdminUrl(config.url || '')) {
+    const token = getAdminToken();
+    if (token) {
+      config.headers.set('Authorization', `Token ${token}`);
+    }
+  }
+  return config;
+});
+
+// Si une requête admin est refusée (token invalide/absent), purger le token ET
+// renvoyer vers la porte d'auth. L'état React ne réagit pas tout seul à la purge :
+// sans cette redirection, l'utilisateur resterait coincé sur une page cassée.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const url: string = error?.config?.url || '';
+    const httpStatus = error?.response?.status;
+    if (isProtectedAdminUrl(url) && (httpStatus === 401 || httpStatus === 403)) {
+      clearAdminToken();
+      if (window.location.pathname.startsWith('/admin')) {
+        window.location.href = '/admin';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Types
 export interface Category {
   id: number;
@@ -181,6 +221,17 @@ export interface DashboardStats {
 }
 
 export const adminApi = {
+  // Auth
+  login: (username: string, password: string) =>
+    api
+      .post<{ token: string }>('/admin/auth/login/', { username, password })
+      .then((res) => {
+        setAdminToken(res.data.token);
+        return res;
+      }),
+  logout: () => clearAdminToken(),
+  isAuthenticated: () => !!getAdminToken(),
+
   // Categories
   getCategories: () => api.get<Category[]>('/admin/categories/'),
   createCategory: (data: Partial<Category>) => api.post<Category>('/admin/categories/', data),

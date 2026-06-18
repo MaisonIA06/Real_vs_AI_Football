@@ -5,7 +5,9 @@ import {
   Image,
   FolderOpen,
   Home,
+  LogOut,
 } from 'lucide-react';
+import { adminApi } from '../../services/api';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -59,7 +61,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-dark-700">
+        <div className="p-4 border-t border-dark-700 space-y-2">
           <Link
             to="/"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-dark-400 hover:bg-dark-800 hover:text-white transition-all"
@@ -67,6 +69,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <Home className="w-5 h-5" />
             <span className="font-medium">Retour au jeu</span>
           </Link>
+          <button
+            onClick={() => {
+              adminApi.logout();
+              window.location.href = '/admin';
+            }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-dark-400 hover:bg-dark-800 hover:text-white transition-all"
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="font-medium">Se déconnecter</span>
+          </button>
         </div>
       </aside>
 

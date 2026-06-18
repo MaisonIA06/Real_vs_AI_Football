@@ -97,12 +97,26 @@ class MediaPairCreateSerializer(serializers.ModelSerializer):
             'media_type',
             getattr(instance, 'media_type', None),
         )
-        if not media_type:
-            return attrs
 
-        # Pour chaque fichier fourni dans cette requête, vérifier l'extension.
-        for field_name in ('real_media', 'ai_media', 'audio_media'):
-            if field_name in attrs:
+        # G: lister les fichiers réellement uploadés dans CETTE requête.
+        uploaded_fields = [
+            f for f in ('real_media', 'ai_media', 'audio_media')
+            if f in attrs and attrs.get(f) not in (None, '')
+        ]
+
+        # G: si un fichier est uploadé, le media_type doit être connu ET valide.
+        # Auparavant un media_type absent/vide faisait un `return attrs` anticipé
+        # qui sautait TOUTE la whitelist d'extensions → contournement possible.
+        if uploaded_fields:
+            valid_types = set(ALLOWED_EXTENSIONS.keys())
+            if media_type not in valid_types:
+                raise serializers.ValidationError({
+                    'media_type': (
+                        "Un media_type valide est requis pour uploader un fichier. "
+                        f"Valeurs acceptées : {sorted(valid_types)}."
+                    )
+                })
+            for field_name in uploaded_fields:
                 _validate_extension(attrs.get(field_name), media_type, field_name)
 
         return attrs

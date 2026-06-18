@@ -3,7 +3,8 @@ Views for the admin API.
 """
 from django.db.models import Avg, Count
 from rest_framework import viewsets, status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 
@@ -18,6 +19,7 @@ from .serializers import (
 
 class CategoryViewSet(viewsets.ModelViewSet):
     """CRUD operations for categories."""
+    permission_classes = [IsAdminUser]
     queryset = Category.objects.all()
     serializer_class = CategoryAdminSerializer
     pagination_class = None
@@ -25,6 +27,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
 class MediaPairViewSet(viewsets.ModelViewSet):
     """CRUD operations for media pairs."""
+    permission_classes = [IsAdminUser]
     queryset = MediaPair.objects.select_related('category').all()
     parser_classes = [MultiPartParser, FormParser]
 
@@ -66,6 +69,7 @@ class MediaPairViewSet(viewsets.ModelViewSet):
 
 
 @api_view(['GET'])
+@permission_classes([IsAdminUser])
 def dashboard_stats(request):
     """Get dashboard statistics."""
     from apps.game.models import GameAnswer
@@ -127,6 +131,7 @@ def dashboard_stats(request):
 
 
 @api_view(['DELETE'])
+@permission_classes([IsAdminUser])
 def delete_session(request, session_id):
     """Delete a game session."""
     try:

@@ -4,13 +4,27 @@ Django settings for Real vs AI project.
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-secret-key-change-in-production')
+_DEFAULT_SECRET_KEY = 'dev-secret-key-change-in-production'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', _DEFAULT_SECRET_KEY)
 
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
+# E: DEBUG désactivé par défaut — un déploiement sans variable explicite ne doit
+# pas tourner en mode debug (fuite de tracebacks, settings, Host wildcard...).
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('true', '1', 'yes')
 
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+# E: en production, refuser de démarrer avec la SECRET_KEY de développement.
+# Elle est publique dans le dépôt et signe notamment les cookies de session
+# (qui portent le mapping réel/IA du scoring solo).
+if not DEBUG and (not SECRET_KEY or SECRET_KEY == _DEFAULT_SECRET_KEY):
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY doit être défini en production "
+        "(la clé par défaut de développement, ou une clé vide, sont interdites)."
+    )
 
 INSTALLED_APPS = [
     'daphne',  # Must be first for ASGI
@@ -22,6 +36,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Third party
     'rest_framework',
+    'rest_framework.authtoken',
     'corsheaders',
     'channels',
     # Local apps
@@ -124,7 +139,14 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # REST Framework Configuration
+# C: l'API de jeu reste publique (AllowAny par défaut) ; l'API admin est protégée
+# au niveau applicatif par IsAdminUser sur ses vues (cf. apps/admin_api/views.py),
+# avec authentification par token (DRF TokenAuthentication).
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
     ],
@@ -144,10 +166,22 @@ CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(',') if o.strip()
 if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
+    SECURE_REFERRER_POLICY = 'same-origin'
+    # F: durcissement explicite des cookies (les défauts Django sont déjà
+    # HttpOnly/Lax, on les rend explicites pour ne pas dépendre de l'implicite).
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    CSRF_COOKIE_SAMESITE = 'Lax'
     if os.environ.get('USE_HTTPS', 'False').lower() in ('true', '1', 'yes'):
+        # F: à activer une fois le VPS en HTTPS (USE_HTTPS=True). Tant que la prod
+        # est en HTTP, ces flags restent inactifs pour ne pas casser les cookies.
         SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+        SECURE_SSL_REDIRECT = True
         SESSION_COOKIE_SECURE = True
         CSRF_COOKIE_SECURE = True
+        SECURE_HSTS_SECONDS = 31536000
+        SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+        SECURE_HSTS_PRELOAD = True
 else:
     ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
 

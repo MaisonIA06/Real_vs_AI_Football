@@ -22,6 +22,14 @@ from .serializers import (
 )
 
 
+def _session_owns(request, session_key):
+    """I (anti-IDOR) : vrai si la session de jeu a été créée par le navigateur
+    courant. L'ownership est enregistré dans request.session à la création, ce
+    qui empêche un tiers (connaissant le session_key) de lire les résultats ou
+    d'écraser le pseudo d'autrui sur le leaderboard."""
+    return str(session_key) in request.session.get('owned_sessions', [])
+
+
 class GameSessionView(APIView):
     """Create a new game session or get session details."""
 
@@ -56,6 +64,15 @@ class GameSessionView(APIView):
         request.session[f'positions_{session.session_key}'] = positions
         request.session[f'pairs_{session.session_key}'] = [p.id for p in pairs]
 
+        # I: enregistrer la propriété de la session sur ce navigateur.
+        # Dédupliqué et borné aux 50 dernières pour éviter une croissance
+        # illimitée de la session côté serveur.
+        owned = request.session.get('owned_sessions', [])
+        key = str(session.session_key)
+        if key not in owned:
+            owned.append(key)
+        request.session['owned_sessions'] = owned[-50:]
+
         # Serialize pairs for response
         pairs_serializer = MediaPairGameSerializer(
             pairs,
@@ -83,6 +100,12 @@ class AnswerSubmitView(APIView):
             return Response(
                 {'error': 'Session non trouvée ou déjà terminée'},
                 status=status.HTTP_404_NOT_FOUND
+            )
+
+        if not _session_owns(request, session_key):
+            return Response(
+                {'error': 'Accès non autorisé à cette session'},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         serializer = AnswerSubmitSerializer(data=request.data)
@@ -202,6 +225,12 @@ class GameResultView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        if not _session_owns(request, session_key):
+            return Response(
+                {'error': 'Accès non autorisé à cette session'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         serializer = GameResultSerializer(session)
         return Response(serializer.data)
 
@@ -213,6 +242,12 @@ class GameResultView(APIView):
             return Response(
                 {'error': 'Session non trouvée ou non terminée'},
                 status=status.HTTP_404_NOT_FOUND
+            )
+
+        if not _session_owns(request, session_key):
+            return Response(
+                {'error': 'Accès non autorisé à cette session'},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         serializer = PseudoSubmitSerializer(data=request.data)

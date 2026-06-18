@@ -293,8 +293,14 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
             return
         
         choice = data.get('choice')
-        response_time_ms = data.get('response_time_ms', 30000)
-        
+        # J: le temps vient du client — le caster et le borner côté serveur,
+        # ne jamais l'insérer brut (valeurs négatives/géantes/non-int).
+        try:
+            response_time_ms = int(data.get('response_time_ms', 30000))
+        except (TypeError, ValueError):
+            response_time_ms = 30000
+        response_time_ms = max(0, min(response_time_ms, 600000))
+
         print(f"[WS] Player {self.player_id} answering with choice={choice}, time={response_time_ms}ms")
         
         if choice not in ['left', 'right', 'real', 'ai']:

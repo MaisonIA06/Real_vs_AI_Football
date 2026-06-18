@@ -108,7 +108,9 @@ class AnswerSubmitSerializer(serializers.Serializer):
     """Serializer for submitting an answer."""
     pair_id = serializers.IntegerField()
     choice = serializers.ChoiceField(choices=['left', 'right', 'real', 'ai'])
-    response_time_ms = serializers.IntegerField(min_value=0)
+    # J: borne haute (10 min) en plus de la borne basse, pour éviter des temps
+    # aberrants qui faussent le scoring/les stats.
+    response_time_ms = serializers.IntegerField(min_value=0, max_value=600000)
 
 
 class AnswerResponseSerializer(serializers.Serializer):

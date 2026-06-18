@@ -7,6 +7,7 @@ import HallucinationsMuseumPage from './pages/HallucinationsMuseumPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminMediaPairs from './pages/admin/AdminMediaPairs';
 import AdminCategories from './pages/admin/AdminCategories';
+import RequireAdminAuth from './components/admin/RequireAdminAuth';
 
 // Multiplayer / Live mode pages
 import MultiplayerHostPage from './pages/multiplayer/MultiplayerHostPage';
@@ -29,10 +30,10 @@ function App() {
         <Route path="/multiplayer/join/:roomCode?" element={<MultiplayerJoinPage />} />
         <Route path="/multiplayer/play/:roomCode" element={<MultiplayerPlayerPage />} />
 
-        {/* Admin routes */}
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/pairs" element={<AdminMediaPairs />} />
-        <Route path="/admin/categories" element={<AdminCategories />} />
+        {/* Admin routes (protégées par auth applicative) */}
+        <Route path="/admin" element={<RequireAdminAuth><AdminDashboard /></RequireAdminAuth>} />
+        <Route path="/admin/pairs" element={<RequireAdminAuth><AdminMediaPairs /></RequireAdminAuth>} />
+        <Route path="/admin/categories" element={<RequireAdminAuth><AdminCategories /></RequireAdminAuth>} />
       </Routes>
     </div>
   );
