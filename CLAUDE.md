@@ -38,22 +38,26 @@ docker compose down          # conserve le volume DB
 docker compose down -v       # détruit le volume DB (relancer populate_pairs après)
 ```
 
-Il n'y a pas de runner de tests, de linter ou de script de type-check configurés dans le repo (aucun fichier de test n'existe à ce jour). Pour des tests Django, lancer `python manage.py test` dans le conteneur backend ; pour un test unique, `python manage.py test apps.game.tests.MaClasse.ma_methode`. Pour un type-check, `tsc --noEmit` dans le conteneur frontend.
+**Tests** : `backend/apps/game/tests.py` contient `HealthEndpointTests` (endpoint `/health/`) et `GameEndAuthorizationTests` (autorisation du consumer WebSocket). Lancer : `docker compose run --rm backend python manage.py test apps.game.tests` (ou `…tests.MaClasse.ma_methode` pour un test unique). ⚠️ La CI **ne lance pas** encore les tests. ⚠️ Piège : `TransactionTestCase` casse au `flush` à cause d'une table orpheline `game_quizpair` (FK vers `game_mediapair`) — pour tester le consumer, suivre le pattern **DB-less** de `GameEndAuthorizationTests` (`SimpleTestCase` + mock des accès DB). Pas de linter configuré ; pour un type-check : `tsc --noEmit` dans le conteneur frontend.
 
 ## Déploiement production
 
-`docker-compose.prod.yml` ne lance que `db` + `redis` + `backend` (bindé sur `127.0.0.1:8001`). Le frontend est buildé en CI (`.github/workflows/deploy.yml`) puis SCP vers le VPS ; le Nginx de l'hôte (`deploy/nginx-realvsai.conf`) sert `frontend/dist` et proxifie `/api/`, `/ws/`, `/media/`, `/admin/` vers Daphne. Chaque push sur `main` déclenche le déploiement complet.
+La prod tourne sur un **VPS durci** (Hostinger, `187.124.219.253`), servie en **HTTPS** sous `https://realvsai.démonstrateur.tech` (domaine + Let's Encrypt/Certbot ; punycode `realvsai.xn--dmonstrateur-beb.tech`). `docker-compose.prod.yml` ne lance que `db` + `redis` + `backend` (bindé sur `127.0.0.1:8001`) ; le Nginx **de l'hôte** sert `frontend/dist` et proxifie `/api/`, `/ws/`, `/media/`, `/admin/`, `/health/` vers Daphne. Le Nginx prod applique un `auth_basic` global (htpasswd `equipe`) avec exceptions publiques (`/api/game/`, `/ws/`, `/media/`, `/multiplayer/`, `/health/`).
 
-Le Nginx prod applique un `auth_basic 'equipe'` **global** (htpasswd), avec des exceptions explicites qui ouvrent les routes publiques au LAN : `/api/game/`, `/ws/`, `/media/`, `/multiplayer/`. C'est cet `auth_basic` qui protège l'API admin (cf. « API admin sans auth applicative » ci-dessous).
+**Serveur durci** : SSH root DÉSACTIVÉ, password auth DÉSACTIVÉ. Le déploiement CI se connecte en utilisateur **`devops`** (sudo NOPASSWD) ; toutes les opérations root passent par `sudo`. Secrets GitHub : `VPS_HOST`, `VPS_USER=devops`, `VPS_SSH_KEY` (clé privée devops).
 
-Scripts de déploiement (à lancer sur le VPS, hors CI) : `deploy/setup-vps.sh` provisionne la machine au premier déploiement (Docker, Nginx, `.env`, htpasswd, clone) ; `deploy/deploy.sh` rejoue un déploiement manuel (build frontend, rsync `dist`, `git pull`, `docker compose -f docker-compose.prod.yml up -d --build`, reload Nginx).
+**Workflow** (`.github/workflows/deploy.yml`, sur push `main` ou `workflow_dispatch`) : build frontend → `git reset --hard ${{ github.sha }}` sur le serveur (miroir exact du commit) → upload frontend vers `/tmp` puis swap `sudo` vers `/opt/realvsai/frontend/dist` → `docker compose -f docker-compose.prod.yml up -d --build` (lance `migrate` + `collectstatic`) → `nginx -t` + reload (la conf Nginx n'est **PAS** écrasée, pour préserver HTTPS/Certbot) → health checks `/health/` + `/multiplayer/`.
+
+**Pièges à éviter** : ne jamais utiliser `rm:true` d'`appleboy/scp-action` vers `/opt/realvsai` (efface le dépôt) ; ne pas réactiver root/password SSH ; ne pas écraser la conf Nginx avec une ancienne config IP-only.
+
+Le contexte ops complet (configs Nginx versionnées, scripts backup/watchdog, sécurité serveur, healthcheck) est dans **`docs/ops/`** — **lire `docs/ops/CLAUDE_CICD_HANDOFF.md` et `docs/ops/OPS.md` avant toute intervention ops/CI**. Les `deploy/setup-vps.sh` / `deploy/deploy.sh` sont d'anciens scripts (référence ; `deploy.sh` cible encore `root@` et n'est plus à jour). Endpoint de santé : `GET /health/` → `{"status":"ok","database":"ok","cache":"ok"}`.
 
 ## Architecture
 
 ### Deux apps Django
 
 - `apps.game` — API publique (`/api/game/`) : sessions solo, réponses, leaderboard, création de room multijoueur, détection d'IP locale (pour le QR code). Détient tous les modèles et le consumer WebSocket.
-- `apps.admin_api` — API admin (`/api/admin/`) : ViewSets CRUD pour `Category` et `MediaPair`, stats dashboard, suppression de session. Les permissions DRF sont `AllowAny` par défaut — les routes admin ne sont pas authentifiées côté DRF, la protection est assurée au niveau du déploiement.
+- `apps.admin_api` — API admin (`/api/admin/`) : ViewSets CRUD pour `Category` et `MediaPair`, stats dashboard, suppression de session. **Auth applicative** : ces routes exigent `IsAdminUser` (DRF `TokenAuthentication`) ; login via `POST /api/admin/auth/login/` (identifiants superuser Django → token). Le permission DRF par défaut reste `AllowAny` (API de jeu publique) ; seules les vues admin surchargent en `IsAdminUser`.
 
 Routes racines : `config/urls.py` monte `/admin/` (admin Django), `/api/game/`, `/api/admin/`. Le routing ASGI (`config/asgi.py` + `apps.game.routing`) expose `ws/multiplayer/<room_code>/`.
 
@@ -109,13 +113,14 @@ Points d'entrée frontend du mode live : `pages/multiplayer/MultiplayerHostPage.
 ## À savoir
 
 - `request.session` est utilisé en solo pour persister le mapping réel/IA gauche-droite, afin que le client n'ait jamais la réponse en clair. Tout refactor cassant la gestion des cookies de session cassera le scoring.
-- **API admin sans auth applicative** : les endpoints `/api/admin/*` sont en `AllowAny` (DRF). La protection repose **uniquement** sur l'`auth_basic` Nginx (`deploy/nginx-realvsai.conf`) en prod. Limitation acceptée : en dev ou sur tout déploiement sans ce Nginx, l'API admin est ouverte au LAN. Si on ajoute une vraie auth applicative, les pages admin du frontend devront gérer un login (elles n'envoient aucun header d'auth aujourd'hui).
+- **Auth API admin** : `/api/admin/*` exige `IsAdminUser` (DRF `TokenAuthentication`). Login : `POST /api/admin/auth/login/` (superuser Django → token). Le SPA admin (`components/admin/RequireAdminAuth.tsx` + `AdminLayout.tsx`) gère ce login, stocke le token en `localStorage` et l'envoie en header `Authorization: Token …` **uniquement** sur les routes `/admin/` (hors `/admin/auth/`) — un interceptor purge le token + renvoie au login sur 401/403. Il faut donc un **superuser** (`createsuperuser`) sur le serveur pour accéder à l'admin. L'`auth_basic` Nginx en prod reste une couche de défense en profondeur par-dessus.
 - `CORS_ALLOW_ALL_ORIGINS = True` quand `DEBUG=True` ; en prod, lecture de `CORS_ALLOWED_ORIGINS` et `CSRF_TRUSTED_ORIGINS` depuis l'env.
 
 ## Sécurité multijoueur (à respecter lors de modifs)
 
 - **`host_token`** (UUID sur `MultiplayerRoom`) : renvoyé **uniquement** par `POST /api/game/multiplayer/rooms/`, **jamais** par le `GET`. Requis dans le payload `host.join` du WebSocket pour obtenir `is_host=True`. Sans ça, n'importe quel élève peut prendre le contrôle de la partie.
 - **`session_token`** (UUID sur `MultiplayerPlayer`) : renvoyé uniquement au premier `player.join` d'un pseudo donné. Toute reconnexion ou join ultérieur sur un pseudo déjà pris doit fournir ce token, sinon c'est refusé (sinon : un attaquant taperait le pseudo d'un autre joueur et hériterait de sa session).
+- **Garde `is_host`** : toutes les actions de contrôle du consumer (`game.start`, `game.next_question`, `game.skip`, `game.show_answer`, `game.end`) doivent commencer par `if not self.is_host: …return`. Ne jamais ajouter une action de contrôle sans cette garde (sinon n'importe quel élève connecté à la room pilote/coupe la partie).
 - **Uploads `/api/admin/media-pairs/`** : les extensions sont whitelistées dans `MediaPairCreateSerializer.validate()` selon `media_type`. Ne pas désactiver cette validation — combiné avec Nginx servant `/media/` en statique, un `.html` ou `.svg` accepté devient du stored XSS sous l'origine de l'application. Les headers `X-Content-Type-Options: nosniff` et la CSP sur `/media/` sont la défense en profondeur.
 - Les `Real_VS_AI.desktop` / `Stop_Real_VS_AI.desktop` + `scripts/start-kiosk.*` servent à lancer l'app en plein écran sur une machine kiosque — inutile en dev.
 - Les notes de planification d'anciens travaux sont dans `.cursor/plans/` (historique, pas des instructions).
