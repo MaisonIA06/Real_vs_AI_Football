@@ -42,6 +42,9 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          # Timeout de connexion porté à 120s : le VPS a des blips réseau
+          # intermittents qui faisaient échouer le dial en 30s (i/o timeout).
+          timeout: 120s
           script: |
             cd /opt/realvsai
             git pull origin main
@@ -52,6 +55,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          timeout: 120s
           source: "frontend/dist/"
           target: "/opt/realvsai/"
           # rm: false (défaut) — surtout PAS true : avec target=/opt/realvsai/,
@@ -65,6 +69,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          timeout: 120s
           script: |
             cd /opt/realvsai
             docker compose -f docker-compose.prod.yml up -d --build
