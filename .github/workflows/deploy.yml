@@ -1,12 +1,17 @@
 # =============================================================================
-# Real vs AI — CI/CD Pipeline
+# Real vs AI — CI/CD Pipeline (serveur durci)
 # =============================================================================
-# Déclenché sur push vers main ou manuellement.
+# Déclenché sur push vers main ou manuellement (workflow_dispatch).
 #
-# Secrets GitHub à configurer (Settings > Secrets and variables > Actions) :
-#   VPS_HOST       — 204.168.174.92
-#   VPS_USER       — root
-#   VPS_SSH_KEY    — Clé privée SSH (contenu complet du fichier)
+# Le VPS est durci : SSH root DÉSACTIVÉ, PasswordAuthentication DÉSACTIVÉ,
+# uniquement pubkey. Le déploiement passe par l'utilisateur `devops` (sudo
+# NOPASSWD) ; toutes les opérations root (git dans /opt, docker, nginx,
+# systemctl) sont préfixées par `sudo`.
+#
+# Secrets GitHub (Settings > Secrets and variables > Actions) :
+#   VPS_HOST     — 187.124.219.253
+#   VPS_USER     — devops          (PLUS root : root SSH est désactivé)
+#   VPS_SSH_KEY  — clé privée autorisée dans /home/devops/.ssh/authorized_keys
 # =============================================================================
 
 name: Deploy to VPS
@@ -33,23 +38,29 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: |
-          npm install
+          npm ci
           npm run build
 
-      - name: Pull latest code on VPS
+      # Le serveur miroir EXACTEMENT le commit déclencheur (github.sha).
+      # `reset --hard` (vs `git pull`) évite l'échec quand /opt/realvsai a des
+      # modifs locales, et permet de tester une branche en workflow_dispatch
+      # avant merge. N'affecte ni .env (gitignoré) ni les fichiers non suivis
+      # (médias uploadés via l'admin).
+      - name: Sync repo on VPS (mirror deployed commit)
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          # Timeout de connexion porté à 120s : le VPS a des blips réseau
-          # intermittents qui faisaient échouer le dial en 30s (i/o timeout).
           timeout: 120s
           script: |
-            cd /opt/realvsai
-            git pull origin main
+            sudo -H bash -lc 'git config --global --get-all safe.directory | grep -qx /opt/realvsai || git config --global --add safe.directory /opt/realvsai'
+            sudo -H bash -lc 'cd /opt/realvsai && git fetch origin --prune && git reset --hard ${{ github.sha }}'
 
-      - name: Upload frontend build to VPS
+      # Upload du build frontend vers /tmp (devops n'écrit pas dans /opt).
+      # rm:true est SANS DANGER ici car la cible est /tmp/realvsai-deploy,
+      # PAS /opt/realvsai (où rm:true effacerait tout le dépôt).
+      - name: Upload frontend build to VPS (staging in /tmp)
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -57,13 +68,10 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           timeout: 120s
           source: "frontend/dist/"
-          target: "/opt/realvsai/"
-          # rm: false (défaut) — surtout PAS true : avec target=/opt/realvsai/,
-          # rm:true effacerait tout le dépôt (docker-compose, deploy/, backend/…)
-          # juste après le git pull, et le build suivant ne trouverait plus rien.
-          rm: false
+          target: "/tmp/realvsai-deploy/"
+          rm: true
 
-      - name: Rebuild backend and reload Nginx
+      - name: Publish frontend, rebuild backend, reload Nginx
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -71,9 +79,39 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           timeout: 120s
           script: |
-            cd /opt/realvsai
-            docker compose -f docker-compose.prod.yml up -d --build
-            cp deploy/nginx-realvsai.conf /etc/nginx/sites-available/realvsai
-            nginx -t && systemctl reload nginx
-            echo "=== Deployment complete ==="
-            docker compose -f docker-compose.prod.yml ps
+            set -e
+            # Garde-fou : échouer AVANT de toucher la prod si l'upload a raté.
+            test -d /tmp/realvsai-deploy/frontend/dist
+            # Publier dans un dossier voisin puis swap (mv) atomique : la prod
+            # n'est jamais laissée sans frontend si la copie échoue.
+            sudo rm -rf /opt/realvsai/frontend/dist.new
+            sudo mkdir -p /opt/realvsai/frontend/dist.new
+            sudo cp -a /tmp/realvsai-deploy/frontend/dist/. /opt/realvsai/frontend/dist.new/
+            sudo chown -R root:root /opt/realvsai/frontend/dist.new
+            sudo rm -rf /opt/realvsai/frontend/dist
+            sudo mv /opt/realvsai/frontend/dist.new /opt/realvsai/frontend/dist
+            rm -rf /tmp/realvsai-deploy
+            # Rebuild backend (le CMD du compose lance collectstatic + migrate).
+            sudo -H bash -lc 'cd /opt/realvsai && docker compose -f docker-compose.prod.yml up -d --build'
+            # Nginx : on NE recopie PAS la config (préserve HTTPS/Certbot),
+            # on valide et on recharge seulement.
+            sudo nginx -t
+            sudo systemctl reload nginx
+            sudo -H bash -lc 'cd /opt/realvsai && docker compose -f docker-compose.prod.yml ps'
+
+      # Vérification de bout en bout depuis l'extérieur (DNS + HTTPS + nginx +
+      # backend). Échoue le déploiement si la prod ne répond pas correctement.
+      - name: Post-deploy health checks
+        run: |
+          set -e
+          # Le backend peut encore tourner collectstatic/migrate juste après le
+          # up -d ; on laisse jusqu'à ~45s avant d'échouer le déploiement.
+          for i in $(seq 1 10); do
+            if curl -fsS https://realvsai.xn--dmonstrateur-beb.tech/health/; then
+              echo; echo "Health OK (tentative $i)"; break
+            fi
+            if [ "$i" = "10" ]; then echo "Health KO apres 10 tentatives"; exit 1; fi
+            echo "Backend pas encore pret, retry dans 5s..."; sleep 5
+          done
+          curl -fsS -o /dev/null https://realvsai.xn--dmonstrateur-beb.tech/multiplayer/
+          echo "=== Deploiement verifie ==="

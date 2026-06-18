@@ -1,0 +1,6 @@
+# Backup quotidien Real vs AI
+# Exécution tous les jours à 03:15 UTC. Journal root-only dans /var/log/backup-realvsai.log.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+15 3 * * * root /usr/local/sbin/backup-realvsai.sh >> /var/log/backup-realvsai.log 2>&1

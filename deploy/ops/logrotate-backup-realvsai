@@ -1,0 +1,9 @@
+/var/log/backup-realvsai.log {
+    weekly
+    missingok
+    rotate 8
+    compress
+    delaycompress
+    notifempty
+    create 0600 root root
+}
