@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     # Local apps
     'apps.game',
     'apps.admin_api',
+    'apps.quiz',
 ]
 
 MIDDLEWARE = [
