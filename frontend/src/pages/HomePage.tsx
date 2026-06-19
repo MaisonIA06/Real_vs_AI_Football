@@ -202,6 +202,22 @@ export default function HomePage() {
           </button>
         </motion.div>
 
+        {/* Quiz Foot (mode live event) */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.85 }}
+          className="mt-4"
+        >
+          <button
+            onClick={() => navigate('/quiz/host')}
+            className="btn-secondary inline-flex items-center gap-3 text-lg"
+          >
+            <span className="text-xl" aria-hidden>⚽</span>
+            Quiz Foot
+          </button>
+        </motion.div>
+
         {/* Leaderboard link */}
         <motion.div
           initial={{ opacity: 0 }}
