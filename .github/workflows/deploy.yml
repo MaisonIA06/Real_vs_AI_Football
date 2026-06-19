@@ -47,15 +47,41 @@ jobs:
       # avant merge. N'affecte ni .env (gitignoré) ni les fichiers non suivis
       # (médias uploadés via l'admin).
       - name: Sync repo on VPS (mirror deployed commit)
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          timeout: 120s
-          script: |
-            sudo -H bash -lc 'git config --global --get-all safe.directory | grep -qx /opt/realvsai || git config --global --add safe.directory /opt/realvsai'
-            sudo -H bash -lc 'cd /opt/realvsai && git fetch origin --prune && git reset --hard ${{ github.sha }}'
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          KEY_FILE="$(mktemp)"
+          trap 'rm -f "$KEY_FILE"' EXIT
+          printf '%s\n' "$VPS_SSH_KEY" > "$KEY_FILE"
+          chmod 600 "$KEY_FILE"
+
+          SSH_OPTS=(
+            -i "$KEY_FILE"
+            -o StrictHostKeyChecking=no
+            -o UserKnownHostsFile=/dev/null
+            -o ConnectTimeout=30
+            -o ServerAliveInterval=10
+            -o ServerAliveCountMax=3
+          )
+
+          for attempt in 1 2 3; do
+            echo "Sync attempt ${attempt}/3"
+            if ssh "${SSH_OPTS[@]}" "${VPS_USER}@${VPS_HOST}" \
+              "sudo -H bash -lc 'git config --global --get-all safe.directory | grep -qx /opt/realvsai || git config --global --add safe.directory /opt/realvsai' && sudo -H bash -lc 'cd /opt/realvsai && git fetch origin --prune && git reset --hard ${DEPLOY_SHA}'"; then
+              echo "Sync OK"
+              exit 0
+            fi
+            echo "Sync attempt ${attempt} failed"
+            sleep 20
+          done
+
+          echo "Sync failed after 3 attempts"
+          exit 1
 
       # Upload du build frontend vers /tmp (devops n'écrit pas dans /opt).
       # rm:true est SANS DANGER ici car la cible est /tmp/realvsai-deploy,
