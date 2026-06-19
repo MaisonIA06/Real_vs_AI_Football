@@ -163,7 +163,24 @@ export const gameApi = {
 
   getLocalIP: () =>
     api.get<{ ip: string }>('/game/local-ip/'),
+
+  // Quiz Foot (mode live event)
+  createQuizRoom: () =>
+    api.post<QuizRoom>('/quiz/rooms/', {}),
+
+  getQuizRoom: (roomCode: string) =>
+    api.get<QuizRoom>(`/quiz/rooms/${roomCode}/`),
 };
+
+// Types for Quiz Foot
+export interface QuizRoom {
+  id: number;
+  room_code: string;
+  host_token?: string; // Renvoyé uniquement à la création (POST), jamais dans le GET
+  status: 'waiting' | 'playing' | 'showing_answer' | 'finished';
+  question_count: number;
+  created_at: string;
+}
 
 // Types for Multiplayer
 export interface MultiplayerRoom {

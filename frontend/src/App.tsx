@@ -14,6 +14,11 @@ import MultiplayerHostPage from './pages/multiplayer/MultiplayerHostPage';
 import MultiplayerJoinPage from './pages/multiplayer/MultiplayerJoinPage';
 import MultiplayerPlayerPage from './pages/multiplayer/MultiplayerPlayerPage';
 
+// Quiz Foot (mode live event) pages
+import QuizHostPage from './pages/quiz/QuizHostPage';
+import QuizJoinPage from './pages/quiz/QuizJoinPage';
+import QuizPlayerPage from './pages/quiz/QuizPlayerPage';
+
 function App() {
   return (
     <div className="min-h-screen bg-animated">
@@ -29,6 +34,11 @@ function App() {
         <Route path="/multiplayer/host" element={<MultiplayerHostPage />} />
         <Route path="/multiplayer/join/:roomCode?" element={<MultiplayerJoinPage />} />
         <Route path="/multiplayer/play/:roomCode" element={<MultiplayerPlayerPage />} />
+
+        {/* Quiz Foot (mode live event) routes */}
+        <Route path="/quiz/host" element={<QuizHostPage />} />
+        <Route path="/quiz/join/:roomCode?" element={<QuizJoinPage />} />
+        <Route path="/quiz/play/:roomCode" element={<QuizPlayerPage />} />
 
         {/* Admin routes (protégées par auth applicative) */}
         <Route path="/admin" element={<RequireAdminAuth><AdminDashboard /></RequireAdminAuth>} />
