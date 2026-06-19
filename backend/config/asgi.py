@@ -15,7 +15,10 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django_asgi_app = get_asgi_application()
 
 # Import routing after Django setup
-from apps.game.routing import websocket_urlpatterns
+from apps.game.routing import websocket_urlpatterns as game_ws_urlpatterns
+from apps.quiz.routing import websocket_urlpatterns as quiz_ws_urlpatterns
+
+websocket_urlpatterns = game_ws_urlpatterns + quiz_ws_urlpatterns
 
 # H: AllowedHostsOriginValidator rétabli (anti-CSWSH). Il valide l'Origin du
 # WebSocket contre ALLOWED_HOSTS. Les appareils du LAN se connectent à l'IP du
