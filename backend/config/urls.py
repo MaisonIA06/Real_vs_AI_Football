@@ -12,6 +12,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/game/', include('apps.game.urls')),
     path('api/admin/', include('apps.admin_api.urls')),
+    path('api/quiz/', include('apps.quiz.urls')),
 ]
 
 if settings.DEBUG:
