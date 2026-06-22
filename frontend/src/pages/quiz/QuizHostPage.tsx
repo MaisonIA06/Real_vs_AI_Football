@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';
 import {
-  Users, Play, ArrowRight, Eye, Trophy, Home, CheckCircle, Crown, Medal, Award,
+  Users, Play, ArrowRight, Eye, Trophy, Home, CheckCircle, XCircle, Crown, Medal, Award,
 } from 'lucide-react';
 import { gameApi } from '../../services/api';
 import {
@@ -349,6 +349,39 @@ export default function QuizHostPage() {
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   className="card p-4 max-w-3xl mx-auto text-left text-dark-300 mb-6">
                   💡 {currentAnswer.anecdote}
+                </motion.div>
+              )}
+
+              {/* Résultats des joueurs (bonnes/mauvaises réponses + points), comme le mode classe */}
+              {screen === 'answer' && currentAnswer && currentAnswer.player_results.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="card p-6 mb-6 max-w-2xl mx-auto"
+                >
+                  <h3 className="font-display text-lg font-semibold mb-4 text-center">Résultats</h3>
+                  <div className="space-y-2">
+                    {currentAnswer.player_results.map((result, index) => (
+                      <div
+                        key={index}
+                        className={`flex items-center justify-between p-3 rounded-lg ${
+                          result.is_correct ? 'bg-green-500/10' : 'bg-red-500/10'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {result.is_correct ? (
+                            <CheckCircle className="w-5 h-5 text-green-400" />
+                          ) : (
+                            <XCircle className="w-5 h-5 text-red-400" />
+                          )}
+                          <span className="font-medium">{result.pseudo}</span>
+                        </div>
+                        <span className={`font-bold ${result.is_correct ? 'text-green-400' : 'text-red-400'}`}>
+                          +{result.points_earned}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </motion.div>
               )}
 
