@@ -91,6 +91,10 @@ class QuizConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.room_code = self.scope['url_route']['kwargs']['room_code'].upper()
         self.room_group_name = f'quiz_{self.room_code}'
+        # Groupe réservé à l'animateur : les events qui n'intéressent QUE l'écran
+        # hôte (player.answered, all_answered) y sont diffusés plutôt qu'à toute
+        # la room — évite ~150 messages inutiles par réponse à l'échelle d'un event.
+        self.host_group_name = f'quiz_{self.room_code}_host'
         self.player_id = None
         self.is_host = False
 
@@ -105,6 +109,8 @@ class QuizConsumer(AsyncWebsocketConsumer):
                 {'type': 'player_left', 'player_id': self.player_id},
             )
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+        if self.is_host:
+            await self.channel_layer.group_discard(self.host_group_name, self.channel_name)
 
     async def receive(self, text_data):
         try:
@@ -158,6 +164,7 @@ class QuizConsumer(AsyncWebsocketConsumer):
             return
 
         self.is_host = True
+        await self.channel_layer.group_add(self.host_group_name, self.channel_name)
         players = await self.get_players_list()
         await self.send(text_data=json.dumps({
             'type': 'host.joined',
@@ -320,8 +327,10 @@ class QuizConsumer(AsyncWebsocketConsumer):
             'total_score': result['total_score'],
         }))
 
+        # player.answered et all_answered ne servent qu'à l'écran animateur :
+        # diffusion au groupe hôte uniquement (pas aux ~150 joueurs).
         await self.channel_layer.group_send(
-            self.room_group_name,
+            self.host_group_name,
             {
                 'type': 'player_answered',
                 'player_id': self.player_id,
@@ -331,7 +340,7 @@ class QuizConsumer(AsyncWebsocketConsumer):
 
         if await self.check_all_answered():
             await self.channel_layer.group_send(
-                self.room_group_name, {'type': 'all_players_answered'},
+                self.host_group_name, {'type': 'all_players_answered'},
             )
 
     async def handle_game_end(self, data):

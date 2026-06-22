@@ -84,6 +84,13 @@ DATABASES = {
         'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'realvsai_password'),
         'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
         'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+        # Connexions persistantes : sous Channels, database_sync_to_async appelle
+        # close_old_connections() autour de chaque accès DB. Avec CONN_MAX_AGE=0
+        # (défaut), chaque requête rouvre une connexion PostgreSQL — coûteux lors
+        # d'un pic de réponses simultanées (event ~150 joueurs). On réutilise la
+        # connexion par thread ; CONN_HEALTH_CHECKS évite les connexions mortes.
+        'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '60')),
+        'CONN_HEALTH_CHECKS': True,
     }
 }
 
