@@ -205,7 +205,7 @@ export default function QuizPlayerPage() {
                     className={`flex items-center gap-3 w-full px-5 py-4 rounded-2xl border-2 text-left text-lg font-medium transition-all active:scale-[0.98] disabled:opacity-60 ${
                       selectedIndex === index
                         ? 'border-primary-500 bg-primary-500/20'
-                        : 'border-dark-700 bg-dark-800 hover:border-primary-500/60'
+                        : 'border-dark-700 bg-dark-800 [@media(hover:hover)]:hover:border-primary-500/60 active:border-primary-500/60'
                     }`}
                   >
                     {!isTrueFalse && (
