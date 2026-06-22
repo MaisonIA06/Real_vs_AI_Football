@@ -24,6 +24,10 @@ export default function QuizHostPage() {
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [hostToken, setHostToken] = useState<string | null>(null);
   const [joinUrl, setJoinUrl] = useState('');
+  const [detectedIp, setDetectedIp] = useState('');
+  const [customIp, setCustomIp] = useState('');
+  const [showIpInput, setShowIpInput] = useState(false);
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const [questionCount, setQuestionCount] = useState<number>(0);
   const [screen, setScreen] = useState<HostScreen>('lobby');
   const [answeredPlayers, setAnsweredPlayers] = useState<Set<number>>(new Set());
@@ -50,6 +54,7 @@ export default function QuizHostPage() {
 
         const currentUrl = new URL(window.location.href);
         const protocol = currentUrl.protocol;
+        setDetectedIp(lanIp || currentUrl.hostname);
         let hostname: string;
         if (lanIp && lanIp !== '127.0.0.1' && !lanIp.startsWith('172.18.') && !lanIp.startsWith('172.17.')) {
           hostname = lanIp;
@@ -118,55 +123,189 @@ export default function QuizHostPage() {
     showAnswerRef.current = showAnswer;
   }, [showAnswer]);
 
+  // --- Helpers IP / lien de partage (alignés sur le mode classe) ---
+  const updateJoinUrl = (ip: string) => {
+    if (!roomCode) return;
+    setJoinUrl(`${window.location.protocol}//${ip}/quiz/join/${roomCode}`);
+  };
+
+  const handleCustomIpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const ip = e.target.value;
+    setCustomIp(ip);
+    if (ip && /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) {
+      updateJoinUrl(ip);
+    }
+  };
+
+  const handleUseDetectedIp = () => {
+    if (detectedIp && detectedIp !== 'localhost' && detectedIp !== '127.0.0.1') {
+      setCustomIp(detectedIp);
+      updateJoinUrl(detectedIp);
+      setShowIpInput(false);
+    }
+  };
+
   const isTrueFalse = currentQuestion?.question_type === 'truefalse';
   const answeredCount = answeredPlayers.size;
 
-  return (
-    <div className="min-h-screen flex flex-col px-4 py-6">
-      <div className="flex items-center justify-between mb-4">
-        <LogoMIA size="small" />
-        {roomCode && (
-          <div className="text-right">
-            <p className="text-xs text-dark-400">Code de la partie</p>
-            <p className="text-2xl font-mono font-bold tracking-widest gradient-text">{roomCode}</p>
-          </div>
-        )}
+  if (!roomCode) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-primary-500/30 border-t-primary-500 rounded-full animate-spin" />
       </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col p-4 md:p-8">
+      <LogoMIA size="small" />
+
+      {/* Header : Quitter + compteur joueurs (sans chrono, choix produit) */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between mb-6"
+      >
+        <button
+          onClick={() => setShowQuitConfirm(true)}
+          className="btn-secondary flex items-center gap-2 px-5 py-3 text-base"
+        >
+          <Home className="w-5 h-5" />
+          <span>Quitter</span>
+        </button>
+
+        <div className="card px-4 py-2 flex items-center gap-2">
+          <Users className="w-5 h-5 text-primary-400" />
+          <span className="font-bold">{players.length}</span>
+          <span className="text-dark-400 hidden sm:inline">joueur{players.length > 1 ? 's' : ''}</span>
+        </div>
+      </motion.div>
 
       <div className="flex-1 flex flex-col items-center justify-center w-full max-w-5xl mx-auto">
         <AnimatePresence mode="wait">
-          {/* LOBBY : QR + liste des joueurs */}
+          {/* LOBBY : Salle d'attente (QR + code + lien + IP + avatars) */}
           {screen === 'lobby' && (
-            <motion.div key="lobby" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="w-full grid md:grid-cols-2 gap-8 items-center">
-              <div className="text-center">
-                <h1 className="font-display text-4xl font-bold mb-2"><span className="gradient-text">Quiz Foot ⚽</span></h1>
-                <p className="text-dark-400 mb-6">Scannez le QR code pour rejoindre</p>
+            <motion.div
+              key="lobby"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="text-center max-w-2xl w-full"
+            >
+              <h1 className="font-display text-4xl md:text-5xl font-bold mb-2">
+                <span className="gradient-text">Salle d'attente</span>
+              </h1>
+              <p className="text-dark-400 mb-8">Quiz Foot ⚽ — {questionCount} questions</p>
+
+              {/* QR Code + code + lien + correction IP */}
+              <div className="card p-8 mb-8 inline-block">
                 {joinUrl && (
-                  <div className="inline-block bg-white p-4 rounded-2xl">
-                    <QRCodeSVG value={joinUrl} size={240} />
+                  <QRCodeSVG value={joinUrl} size={200} level="M" includeMargin className="mx-auto" />
+                )}
+                <p className="mt-4 text-dark-400">Scannez pour rejoindre</p>
+                <div className="mt-2 px-4 py-2 bg-dark-800 rounded-lg">
+                  <span className="text-dark-400">Code : </span>
+                  <span className="font-mono font-bold text-2xl gradient-text">{roomCode}</span>
+                </div>
+
+                {joinUrl && (
+                  <div className="mt-4 p-3 bg-dark-700 rounded-lg">
+                    <p className="text-xs text-dark-400 mb-2">Ou copiez ce lien :</p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={joinUrl}
+                        readOnly
+                        className="flex-1 px-2 py-1 bg-dark-800 rounded text-xs font-mono text-dark-300"
+                        onClick={(e) => (e.target as HTMLInputElement).select()}
+                      />
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(joinUrl);
+                          alert('URL copiée !');
+                        }}
+                        className="px-3 py-2 bg-primary-500/20 active:bg-primary-500/30 rounded text-sm text-primary-400 transition-colors whitespace-nowrap"
+                      >
+                        Copier
+                      </button>
+                    </div>
                   </div>
                 )}
-                <p className="text-dark-500 text-sm mt-4">{questionCount} questions</p>
+
+                <div className="mt-4">
+                  <button
+                    onClick={() => setShowIpInput(!showIpInput)}
+                    className="text-sm text-primary-400 active:text-primary-300 transition-colors p-2"
+                  >
+                    {showIpInput ? 'Masquer' : "Corriger l'IP"}
+                  </button>
+
+                  {showIpInput && (
+                    <div className="mt-2 p-3 bg-dark-700 rounded-lg">
+                      <p className="text-xs text-dark-400 mb-2">Entrez votre IP LAN :</p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={customIp}
+                          onChange={handleCustomIpChange}
+                          placeholder="192.168.x.x"
+                          className="flex-1 px-2 py-1 bg-dark-800 rounded text-xs font-mono text-dark-300 focus:border-primary-500 focus:outline-none border-2 border-dark-700"
+                          pattern="\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
+                        />
+                        {detectedIp && detectedIp !== 'localhost' && detectedIp !== '127.0.0.1' && (
+                          <button
+                            onClick={handleUseDetectedIp}
+                            className="px-3 py-2 bg-accent-500/20 active:bg-accent-500/30 rounded text-sm text-accent-400 transition-colors"
+                            title={`Utiliser ${detectedIp}`}
+                          >
+                            Auto
+                          </button>
+                        )}
+                      </div>
+                      {customIp && !/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(customIp) && (
+                        <p className="text-xs text-red-400 mt-1">Format IP invalide</p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <Users className="w-6 h-6 text-primary-400" />
-                  <h2 className="text-xl font-semibold">{players.length} joueur{players.length > 1 ? 's' : ''}</h2>
-                </div>
-                <div className="grid grid-cols-2 gap-2 mb-6 min-h-[3rem]">
-                  {players.map((p) => (
-                    <motion.div key={p.id} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
-                      className="px-3 py-2 bg-dark-800 rounded-lg text-center truncate">{p.pseudo}</motion.div>
-                  ))}
-                  {players.length === 0 && <p className="text-dark-500 col-span-2">En attente de joueurs…</p>}
-                </div>
-                <button onClick={startGame} disabled={players.length === 0}
-                  className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                  <Play className="w-5 h-5" /> Démarrer le quiz
-                </button>
+              {/* Liste des joueurs avec avatars */}
+              <div className="card p-6 mb-8">
+                <h3 className="font-display text-lg font-semibold mb-4 flex items-center justify-center gap-2">
+                  <Users className="w-5 h-5 text-primary-400" />
+                  Joueurs connectés ({players.length})
+                </h3>
+                {players.length === 0 ? (
+                  <p className="text-dark-400">En attente de joueurs...</p>
+                ) : (
+                  <div className="flex flex-wrap justify-center gap-3">
+                    {players.map((player, index) => (
+                      <motion.div
+                        key={player.id}
+                        initial={{ opacity: 0, scale: 0 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="px-4 py-2 bg-dark-700 rounded-full flex items-center gap-2"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-primary-500/30 flex items-center justify-center">
+                          {player.pseudo.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="font-medium">{player.pseudo}</span>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
               </div>
+
+              <button
+                onClick={startGame}
+                disabled={players.length < 1}
+                className="btn-primary inline-flex items-center gap-3 text-xl disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Play className="w-6 h-6" />
+                Lancer la partie
+              </button>
             </motion.div>
           )}
 
@@ -266,6 +405,42 @@ export default function QuizHostPage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Modale de confirmation de sortie (tactile-friendly) */}
+      <AnimatePresence>
+        {showQuitConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-dark-900/80"
+            onClick={() => setShowQuitConfirm(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="card max-w-sm w-full p-8 relative text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="font-display text-2xl font-bold mb-3">Quitter la partie ?</h2>
+              <p className="text-dark-400 mb-8">La partie sera terminée pour tous les joueurs.</p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button onClick={() => setShowQuitConfirm(false)} className="btn-secondary px-8 py-4 text-lg">
+                  Continuer
+                </button>
+                <button
+                  onClick={() => navigate('/')}
+                  className="px-8 py-4 rounded-xl font-semibold text-lg bg-red-500/20 active:bg-red-500/40 border-2 border-red-500/50 text-red-400 transition-all"
+                >
+                  Quitter
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

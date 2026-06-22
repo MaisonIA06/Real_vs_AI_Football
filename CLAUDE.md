@@ -97,6 +97,8 @@ Un seul consumer : `apps.game.consumers.MultiplayerConsumer` gère toutes les ac
 
 Points d'entrée frontend du mode live : `pages/multiplayer/MultiplayerHostPage.tsx` (projecteur/enseignant), `MultiplayerJoinPage.tsx` (lobby via QR/code), `MultiplayerPlayerPage.tsx` (élève). Le hook `useMultiplayerSocket` encapsule la connexion/reconnexion WebSocket via le `session_token`.
 
+Le **Quiz Foot** (app `apps.quiz`, mode live event) a ses propres pages `pages/quiz/QuizHostPage.tsx` / `QuizJoinPage.tsx` / `QuizPlayerPage.tsx` + hook `useQuizSocket` (`ws/quiz/<code>/`). Leur **UI/UX est volontairement alignée sur celle du mode classe** (salle d'attente avec QR/avatars/correction IP, carte « Résultats » des joueurs à la révélation, podium animé, header joueur sticky) — en gardant les spécificités quiz (image centrale + propositions A/B/C/D ou Vrai/Faux). Différence assumée : **pas de chronomètre** (révélation manuelle ou auto quand tous ont répondu). La page `pages/EventFootPage.tsx` (`/event-foot`) enchaîne Quiz Foot puis Real vs AI (preset `foot`).
+
 ### Client API frontend
 
 `frontend/src/services/api.ts` — `getApiUrl()` résout vers `/api` (relatif) sauf si `VITE_API_URL` pointe vers une URL non-localhost. C'est volontaire : téléphones/tablettes sur le LAN tapent le même hôte Nginx, une URL absolue casserait. Ne jamais coder en dur `localhost:8000` ou `localhost:8080` dans les appels fetch/axios — toujours passer par l'instance `api` ou un chemin relatif.
