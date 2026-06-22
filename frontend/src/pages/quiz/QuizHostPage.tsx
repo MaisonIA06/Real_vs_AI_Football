@@ -89,6 +89,15 @@ export default function QuizHostPage() {
     fireConfetti();
   }, []);
 
+  // Ref vers showAnswer : permet de le déclencher depuis handleAllAnswered, qui
+  // est défini avant que le hook n'expose showAnswer.
+  const showAnswerRef = useRef<() => void>(() => {});
+
+  const handleAllAnswered = useCallback(() => {
+    // Auto-révélation quand tous les joueurs connectés ont répondu (comme le mode classe).
+    showAnswerRef.current();
+  }, []);
+
   const {
     players, currentQuestion, currentAnswer, podium,
     startGame, nextQuestion, showAnswer, endGame,
@@ -100,8 +109,14 @@ export default function QuizHostPage() {
     onNewQuestion: handleNewQuestion,
     onAnswerRevealed: handleAnswerRevealed,
     onPlayerAnswered: handlePlayerAnswered,
+    onAllAnswered: handleAllAnswered,
     onGameFinished: handleGameFinished,
   });
+
+  // Garder la ref synchronisée avec la dernière instance de showAnswer.
+  useEffect(() => {
+    showAnswerRef.current = showAnswer;
+  }, [showAnswer]);
 
   const isTrueFalse = currentQuestion?.question_type === 'truefalse';
   const answeredCount = answeredPlayers.size;
