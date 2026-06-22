@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';
 import {
-  Users, Play, ArrowRight, Eye, Trophy, Home, CheckCircle, XCircle, Crown, Medal, Award,
+  Users, Play, ArrowRight, Eye, Trophy, Home, CheckCircle, XCircle, Crown, Medal, Award, Sparkles,
 } from 'lucide-react';
 import { gameApi } from '../../services/api';
 import {
@@ -15,8 +15,24 @@ import LogoMIA from '../../components/LogoMIA';
 type HostScreen = 'lobby' | 'question' | 'answer' | 'podium';
 const LETTERS = ['A', 'B', 'C', 'D'];
 
+// Pluie de confettis (4s, deux sources) — identique au mode classe.
 const fireConfetti = () => {
-  confetti({ particleCount: 120, spread: 80, origin: { y: 0.5 }, colors: ['#FFD700', '#FFA500', '#22c55e', '#00CED1'] });
+  const duration = 4000;
+  const animationEnd = Date.now() + duration;
+  const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 1000 };
+  const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+  const interval = window.setInterval(() => {
+    const timeLeft = animationEnd - Date.now();
+    if (timeLeft <= 0) return clearInterval(interval);
+    const particleCount = 50 * (timeLeft / duration);
+    confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }, colors: ['#FFD700', '#FFA500', '#FF6347', '#00CED1', '#9370DB'] });
+    confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }, colors: ['#FFD700', '#FFA500', '#FF6347', '#00CED1', '#9370DB'] });
+  }, 250);
+};
+
+const fireWinnerConfetti = () => {
+  confetti({ particleCount: 100, spread: 70, origin: { x: 0.5, y: 0.5 }, colors: ['#FFD700', '#FFC700', '#FFE700'], scalar: 1.2 });
 };
 
 export default function QuizHostPage() {
@@ -90,8 +106,8 @@ export default function QuizHostPage() {
   }, []);
 
   const handleGameFinished = useCallback((_podium: QuizPodiumPlayer[]) => {
+    // Les confettis sont déclenchés par l'apparition du podium (onAnimationComplete).
     setScreen('podium');
-    fireConfetti();
   }, []);
 
   // Ref vers showAnswer : permet de le déclencher depuis handleAllAnswered, qui
@@ -409,29 +425,172 @@ export default function QuizHostPage() {
             </motion.div>
           )}
 
-          {/* PODIUM */}
+          {/* PODIUM animé (barres 3D, médailles, couronne, confettis séquentiels) */}
           {screen === 'podium' && (
-            <motion.div key="podium" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-              className="w-full max-w-xl text-center">
-              <Trophy className="w-20 h-20 text-yellow-400 mx-auto mb-4" />
-              <h1 className="font-display text-4xl font-bold gradient-text mb-8">Podium</h1>
-              <div className="space-y-3">
-                {podium.slice(0, 5).map((p) => {
-                  const icon = p.rank === 1 ? <Crown className="w-6 h-6 text-yellow-400" />
-                    : p.rank === 2 ? <Medal className="w-6 h-6 text-gray-300" />
-                    : p.rank === 3 ? <Award className="w-6 h-6 text-amber-600" />
-                    : <span className="w-6 text-center text-dark-400">{p.rank}</span>;
-                  return (
-                    <motion.div key={p.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: p.rank * 0.1 }}
-                      className={`flex items-center justify-between px-5 py-4 rounded-xl ${p.rank === 1 ? 'bg-yellow-500/10 border border-yellow-500/40' : 'bg-dark-800'}`}>
-                      <span className="flex items-center gap-3 text-lg">{icon}<span className="font-semibold">{p.pseudo}</span></span>
-                      <span className="font-bold text-xl">{p.score} pts</span>
+            <motion.div
+              key="podium"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onAnimationComplete={() => {
+                setTimeout(fireConfetti, 800);
+                setTimeout(fireWinnerConfetti, 1500);
+              }}
+              className="w-full max-w-4xl text-center"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, type: 'spring' }}
+                className="mb-12"
+              >
+                <motion.div animate={{ rotate: [0, -10, 10, -10, 0] }} transition={{ duration: 0.5, delay: 0.5 }}>
+                  <Trophy className="w-16 h-16 md:w-20 md:h-20 text-yellow-400 mx-auto mb-4" />
+                </motion.div>
+                <h1 className="font-display text-4xl md:text-6xl font-bold">
+                  <span className="gradient-text">Podium Final</span>
+                </h1>
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: '100%' }}
+                  transition={{ duration: 0.8, delay: 0.3 }}
+                  className="h-1 bg-gradient-to-r from-transparent via-yellow-400 to-transparent mx-auto mt-4 max-w-md"
+                />
+              </motion.div>
+
+              {/* Podium : révélation séquentielle 3e -> 2e -> 1er */}
+              <div className="flex justify-center items-end gap-4 md:gap-8 mb-12 px-4">
+                {/* 2e place */}
+                {podium[1] && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 100 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.2, duration: 0.6, type: 'spring', bounce: 0.4 }}
+                    className="flex flex-col items-center"
+                  >
+                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 1.4, type: 'spring' }}>
+                      <Medal className="w-10 h-10 md:w-12 md:h-12 text-gray-300 mb-2" />
                     </motion.div>
-                  );
-                })}
+                    <motion.div
+                      initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 1.3, type: 'spring' }}
+                      className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-gray-400/30 to-gray-500/20 flex items-center justify-center mb-2 ring-4 ring-gray-400/50 shadow-lg shadow-gray-500/20"
+                    >
+                      <span className="text-2xl md:text-3xl font-bold text-gray-200">{podium[1].pseudo.charAt(0).toUpperCase()}</span>
+                    </motion.div>
+                    <p className="font-medium text-lg text-gray-200">{podium[1].pseudo}</p>
+                    <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5 }} className="text-gray-300 font-bold text-xl">
+                      {podium[1].score} pts
+                    </motion.p>
+                    <motion.div
+                      initial={{ height: 0 }} animate={{ height: 100 }} transition={{ delay: 1.2, duration: 0.4 }}
+                      className="w-24 md:w-28 bg-gradient-to-t from-gray-600/40 to-gray-400/20 rounded-t-lg mt-4 flex items-center justify-center"
+                    >
+                      <span className="text-4xl font-bold text-gray-400/50">2</span>
+                    </motion.div>
+                  </motion.div>
+                )}
+
+                {/* 1re place */}
+                {podium[0] && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 100 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.8, duration: 0.8, type: 'spring', bounce: 0.5 }}
+                    className="flex flex-col items-center"
+                  >
+                    <motion.div initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }} transition={{ delay: 2.0, type: 'spring', bounce: 0.6 }}>
+                      <Crown className="w-12 h-12 md:w-16 md:h-16 text-yellow-400 mb-2" />
+                    </motion.div>
+                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 1.9, type: 'spring', bounce: 0.5 }} className="relative">
+                      <motion.div
+                        animate={{ boxShadow: ['0 0 20px rgba(234, 179, 8, 0.3)', '0 0 40px rgba(234, 179, 8, 0.5)', '0 0 20px rgba(234, 179, 8, 0.3)'] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                        className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-yellow-400/40 to-yellow-600/20 flex items-center justify-center ring-4 ring-yellow-400 shadow-2xl"
+                      >
+                        <span className="text-3xl md:text-4xl font-bold text-yellow-300">{podium[0].pseudo.charAt(0).toUpperCase()}</span>
+                      </motion.div>
+                      <motion.div animate={{ rotate: 360 }} transition={{ duration: 4, repeat: Infinity, ease: 'linear' }} className="absolute -top-2 -right-2">
+                        <Sparkles className="w-6 h-6 text-yellow-400" />
+                      </motion.div>
+                    </motion.div>
+                    <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.1 }} className="font-bold text-xl md:text-2xl text-yellow-300 mt-2">
+                      {podium[0].pseudo}
+                    </motion.p>
+                    <motion.p initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 2.2, type: 'spring' }} className="text-yellow-400 font-bold text-2xl md:text-3xl">
+                      {podium[0].score} pts
+                    </motion.p>
+                    <motion.div
+                      initial={{ height: 0 }} animate={{ height: 140 }} transition={{ delay: 1.8, duration: 0.5 }}
+                      className="w-28 md:w-36 bg-gradient-to-t from-yellow-600/40 to-yellow-400/20 rounded-t-lg mt-4 flex items-center justify-center"
+                    >
+                      <span className="text-5xl font-bold text-yellow-400/50">1</span>
+                    </motion.div>
+                  </motion.div>
+                )}
+
+                {/* 3e place */}
+                {podium[2] && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 100 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6, duration: 0.6, type: 'spring', bounce: 0.4 }}
+                    className="flex flex-col items-center"
+                  >
+                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.8, type: 'spring' }}>
+                      <Award className="w-8 h-8 md:w-10 md:h-10 text-orange-400 mb-2" />
+                    </motion.div>
+                    <motion.div
+                      initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.7, type: 'spring' }}
+                      className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-orange-400/30 to-orange-600/20 flex items-center justify-center mb-2 ring-4 ring-orange-500/50 shadow-lg shadow-orange-500/20"
+                    >
+                      <span className="text-xl md:text-2xl font-bold text-orange-300">{podium[2].pseudo.charAt(0).toUpperCase()}</span>
+                    </motion.div>
+                    <p className="font-medium text-orange-200">{podium[2].pseudo}</p>
+                    <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} className="text-orange-400 font-bold text-lg">
+                      {podium[2].score} pts
+                    </motion.p>
+                    <motion.div
+                      initial={{ height: 0 }} animate={{ height: 70 }} transition={{ delay: 0.6, duration: 0.4 }}
+                      className="w-20 md:w-24 bg-gradient-to-t from-orange-600/40 to-orange-400/20 rounded-t-lg mt-4 flex items-center justify-center"
+                    >
+                      <span className="text-3xl font-bold text-orange-400/50">3</span>
+                    </motion.div>
+                  </motion.div>
+                )}
               </div>
-              <button onClick={() => navigate('/')} className="btn-secondary mt-8 flex items-center gap-2 mx-auto">
+
+              {/* Classement complet (au-delà du top 3) */}
+              {podium.length > 3 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 2.5 }}
+                  className="card p-6 mb-8 max-w-2xl mx-auto"
+                >
+                  <h3 className="font-display text-lg font-semibold mb-4">Classement complet</h3>
+                  <div className="space-y-2">
+                    {podium.slice(3).map((player, index) => (
+                      <motion.div
+                        key={player.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 2.6 + index * 0.1 }}
+                        className="flex items-center justify-between p-3 bg-dark-700 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="w-8 h-8 rounded-full bg-dark-600 flex items-center justify-center font-bold">
+                            {player.rank}
+                          </span>
+                          <span>{player.pseudo}</span>
+                        </div>
+                        <span className="font-bold text-dark-300">{player.score} pts</span>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              <button onClick={() => navigate('/')} className="btn-secondary mt-4 inline-flex items-center gap-2">
                 <Home className="w-5 h-5" /> Accueil
               </button>
             </motion.div>
