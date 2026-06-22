@@ -40,7 +40,6 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
         self.player_id = None
         self.is_host = False
         
-        print(f"[WS] New connection to room {self.room_code}, channel: {self.channel_name}")
         
         # Join room group
         await self.channel_layer.group_add(
@@ -128,7 +127,6 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
             return
 
         self.is_host = True
-        print(f"[WS] Host joined room {self.room_code}, channel: {self.channel_name}")
 
         players = await self.get_players_list()
 
@@ -173,7 +171,6 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
 
         self.player_id = player.id
 
-        print(f"[WS] Player {player.pseudo} (ID: {player.id}) joined room {self.room_code}, channel: {self.channel_name}, room_status: {room.status}")
 
         # Send confirmation to player with room status for reconnection handling.
         # Le session_token n'est renvoyé qu'au premier join (création) pour que le
@@ -193,7 +190,6 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
         if room.status == 'playing':
             question_data = await self.get_current_question_data()
             if question_data:
-                print(f"[WS] Sending current question to reconnecting player {player.pseudo}")
                 await self.send(text_data=json.dumps({
                     'type': 'game.started',
                     'question': question_data,
@@ -230,7 +226,6 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
         # Get first question data
         question_data = await self.get_current_question_data()
         
-        print(f"[WS] Starting game in room {self.room_code}, broadcasting to group {self.room_group_name}")
         
         # Notify all players
         await self.channel_layer.group_send(
@@ -241,7 +236,6 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
             }
         )
         
-        print(f"[WS] game_started broadcast sent to group {self.room_group_name}")
     
     async def handle_next_question(self, data):
         """Host moves to the next question."""
@@ -295,16 +289,12 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
     
     async def handle_player_answer(self, data):
         """Player submits an answer."""
-        print(f"[WS] handle_player_answer called, player_id={self.player_id}, channel={self.channel_name}")
         
         # Récupérer player_id depuis la base de données si perdu
         if not self.player_id:
-            print(f"[WS] player_id is None, trying to recover from database...")
             self.player_id = await self.get_player_from_channel()
-            print(f"[WS] Recovered player_id: {self.player_id}")
         
         if not self.player_id:
-            print(f"[WS] ERROR: Could not find player for channel {self.channel_name}")
             await self.send_error("You must join first - please refresh the page")
             return
         
@@ -317,7 +307,6 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
             response_time_ms = 30000
         response_time_ms = max(0, min(response_time_ms, 600000))
 
-        print(f"[WS] Player {self.player_id} answering with choice={choice}, time={response_time_ms}ms")
         
         if choice not in ['left', 'right', 'real', 'ai']:
             await self.send_error("Invalid choice")
@@ -329,7 +318,6 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
             return
             
         if room.status != 'playing':
-            print(f"[WS] ERROR: Game not in progress, room status={room.status}")
             await self.send_error(f"Game not in progress (status: {room.status})")
             return
         
@@ -349,7 +337,6 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
         }))
         
         # Notify host about player's answer
-        print(f"[WS] Sending player_answered to group {self.room_group_name} for player {self.player_id} ({result['pseudo']})")
         await self.channel_layer.group_send(
             self.room_group_name,
             {
@@ -408,12 +395,10 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
     
     async def game_started(self, event):
         """Notify that game has started."""
-        print(f"[WS] game_started handler called for channel {self.channel_name}, is_host={self.is_host}, player_id={self.player_id}")
         await self.send(text_data=json.dumps({
             'type': 'game.started',
             'question': event['question'],
         }))
-        print(f"[WS] game.started message sent to channel {self.channel_name}")
     
     async def new_question(self, event):
         """Send new question to all."""
@@ -431,7 +416,6 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
     
     async def player_answered(self, event):
         """Notify that a player has answered."""
-        print(f"[WS] player_answered handler called for channel {self.channel_name}, is_host={self.is_host}")
         await self.send(text_data=json.dumps({
             'type': 'player.answered',
             'player_id': event['player_id'],
@@ -513,7 +497,6 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
                     existing_player.is_connected = True
                     existing_player.channel_name = self.channel_name
                     existing_player.save()
-                    print(f"[DB] Player {pseudo} reconnected to room {self.room_code}")
                     return existing_player, False, None
 
                 # Pas de token ou token invalide → refuser (usurpation potentielle)
@@ -534,7 +517,6 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
                 pseudo=pseudo,
                 channel_name=self.channel_name,
             )
-            print(f"[DB] New player {pseudo} created in room {self.room_code}")
             return player, True, None
 
         except MultiplayerRoom.DoesNotExist:
