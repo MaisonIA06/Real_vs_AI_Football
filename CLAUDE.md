@@ -90,6 +90,7 @@ Dans `AnswerSubmitView.post` (`backend/apps/game/views.py`) :
 Un seul consumer : `apps.game.consumers.MultiplayerConsumer` gère toutes les actions via un champ `action` dispatché dans une map de handlers. Clés : `host.join`, `player.join`, `game.start`, `game.next_question`, `game.skip`, `game.show_answer`, `player.answer`, `game.end`.
 
 - `MultiplayerRoom.ai_positions` est un JSONField mappant `pair_id -> 'left'|'right'`, généré une seule fois au démarrage du jeu pour que l'hôte et les joueurs voient le même layout.
+- `MultiplayerRoom.ordered_pair_ids` (JSONField, vide par défaut) : sélection **préchoisie et ordonnée** de paires (preset). Vide → sélection aléatoire classique triée par id ; non vide → le consumer suit cet ordre exact (`ordered_pairs_for_room`). Les presets sont définis dans `apps/game/presets.py` par chemins `real_media` **stables** (pas par id, qui diffèrent dev/prod) ; `POST /api/game/multiplayer/rooms/` accepte `preset=<nom>` et **renvoie 400** si le preset est inconnu ou incomplet (paires non seedées). Preset `foot` = sélection de l'Event Foot.
 - `MultiplayerPlayer.session_token` (UUID) sert à la reconnexion ; `channel_name` + `is_connected` suivent le WebSocket actif.
 - Bonus de score pour les premiers à répondre correctement : +50 / +30 / +10 (selon `answer_order`).
 - Les réponses d'un joueur sont `unique_together=['player', 'media_pair']` — un seul vote par question par joueur.

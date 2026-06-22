@@ -23,3 +23,6 @@ Thumbs.db
 
 # Docker volumes
 postgres_data/
+
+# Symlinks opaques régénérés au runtime (sync_media_links) — ne pas versionner
+backend/media/q/

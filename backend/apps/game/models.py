@@ -348,6 +348,14 @@ class MultiplayerRoom(models.Model):
         blank=True,
         help_text="Position de l'IA pour chaque paire (pair_id: 'left'|'right')"
     )
+    ordered_pair_ids = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            "Ordre figé des paires pour une sélection préchoisie (preset). "
+            "Vide = sélection aléatoire classique triée par id."
+        )
+    )
     pairs = models.ManyToManyField(
         MediaPair,
         blank=True,

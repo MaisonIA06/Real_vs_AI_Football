@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import MediaPair, GameSession, GameAnswer, GlobalStats, MultiplayerRoom
+from .presets import resolve_preset, PAIR_PRESETS
 from .serializers import (
     GameSessionCreateSerializer,
     GameSessionSerializer,
@@ -281,11 +282,43 @@ class LeaderboardView(APIView):
 # =============================================================================
 
 class MultiplayerRoomCreateView(APIView):
-    """Create a new multiplayer room."""
+    """Create a new multiplayer room.
+
+    Accepte optionnellement un `preset` (sélection de paires préchoisie et
+    ordonnée, cf. apps.game.presets). Sans preset : comportement classique
+    (sélection aléatoire au démarrage par le consumer).
+    """
 
     def post(self, request):
-        # Create room
-        room = MultiplayerRoom.objects.create()
+        preset_name = (request.data or {}).get('preset')
+        pairs = None
+
+        # Valider le preset AVANT de créer la room : un event lancé avec un preset
+        # cassé (nom erroné, paires non seedées en prod) doit échouer VISIBLEMENT,
+        # pas retomber silencieusement en partie aléatoire ou tronquée.
+        if preset_name:
+            if preset_name not in PAIR_PRESETS:
+                return Response(
+                    {'error': f"Preset inconnu : {preset_name}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            pairs = resolve_preset(preset_name)
+            expected = len(PAIR_PRESETS[preset_name])
+            if len(pairs) < expected:
+                return Response(
+                    {'error': f"Preset « {preset_name} » incomplet : "
+                              f"{len(pairs)}/{expected} paires résolues. "
+                              f"Lancer populate_pairs côté serveur ?"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        with transaction.atomic():
+            room = MultiplayerRoom.objects.create()
+            if pairs:
+                room.pairs.set(pairs)
+                # Fige l'ordre exact voulu (le M2M ne préserve pas l'ordre).
+                room.ordered_pair_ids = [p.id for p in pairs]
+                room.save(update_fields=['ordered_pair_ids'])
 
         # Le host_token n'est renvoyé QU'À la création, jamais dans le GET détail.
         # C'est la seule preuve que le client est bien l'hôte légitime.
@@ -295,6 +328,8 @@ class MultiplayerRoomCreateView(APIView):
             'host_token': str(room.host_token),
             'quiz': None,
             'status': room.status,
+            'preset': preset_name if pairs else None,
+            'pairs_count': len(room.ordered_pair_ids) if pairs else None,
             'created_at': room.created_at.isoformat(),
         }, status=status.HTTP_201_CREATED)
 
