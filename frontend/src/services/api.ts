@@ -155,8 +155,9 @@ export const gameApi = {
     }),
 
   // Multiplayer / Live Mode
-  createMultiplayerRoom: () =>
-    api.post<MultiplayerRoom>('/game/multiplayer/rooms/', {}),
+  // `preset` optionnel : sélection de paires préchoisie/ordonnée (ex. 'foot').
+  createMultiplayerRoom: (preset?: string) =>
+    api.post<MultiplayerRoom>('/game/multiplayer/rooms/', preset ? { preset } : {}),
 
   getMultiplayerRoom: (roomCode: string) =>
     api.get<MultiplayerRoom>(`/game/multiplayer/rooms/${roomCode}/`),

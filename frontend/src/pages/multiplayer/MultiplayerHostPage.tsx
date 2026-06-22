@@ -110,7 +110,9 @@ export default function MultiplayerHostPage() {
           console.warn('Failed to get IP from backend:', error);
         }
         
-        const response = await gameApi.createMultiplayerRoom(undefined); // Toujours undefined pour quizId
+        // Preset optionnel via l'URL (?preset=foot) pour une sélection préchoisie.
+        const preset = searchParams.get('preset') || undefined;
+        const response = await gameApi.createMultiplayerRoom(preset);
         const code = response.data.room_code;
         setRoomCode(code);
         // Stocker le host_token reçu à la création (renvoyé UNIQUEMENT ici)

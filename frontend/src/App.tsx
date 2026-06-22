@@ -18,6 +18,7 @@ import MultiplayerPlayerPage from './pages/multiplayer/MultiplayerPlayerPage';
 import QuizHostPage from './pages/quiz/QuizHostPage';
 import QuizJoinPage from './pages/quiz/QuizJoinPage';
 import QuizPlayerPage from './pages/quiz/QuizPlayerPage';
+import EventFootPage from './pages/EventFootPage';
 
 function App() {
   return (
@@ -34,6 +35,9 @@ function App() {
         <Route path="/multiplayer/host" element={<MultiplayerHostPage />} />
         <Route path="/multiplayer/join/:roomCode?" element={<MultiplayerJoinPage />} />
         <Route path="/multiplayer/play/:roomCode" element={<MultiplayerPlayerPage />} />
+
+        {/* Event Foot : parcours Quiz Foot + Real vs AI (sélection foot) */}
+        <Route path="/event-foot" element={<EventFootPage />} />
 
         {/* Quiz Foot (mode live event) routes */}
         <Route path="/quiz/host" element={<QuizHostPage />} />

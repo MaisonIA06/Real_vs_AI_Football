@@ -202,7 +202,7 @@ export default function HomePage() {
           </button>
         </motion.div>
 
-        {/* Quiz Foot (mode live event) */}
+        {/* Event Foot : parcours Quiz Foot + Real vs AI (sélection foot) */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -210,11 +210,11 @@ export default function HomePage() {
           className="mt-4"
         >
           <button
-            onClick={() => navigate('/quiz/host')}
+            onClick={() => navigate('/event-foot')}
             className="btn-secondary inline-flex items-center gap-3 text-lg"
           >
             <span className="text-xl" aria-hidden>⚽</span>
-            Quiz Foot
+            Event Foot
           </button>
         </motion.div>
 
