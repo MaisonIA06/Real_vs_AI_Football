@@ -310,6 +310,26 @@ class GameSettings(models.Model):
         return obj
 
 
+def playable_pairs():
+    """Queryset des paires jouables — source de vérité UNIQUE du tirage.
+
+    Paires actives, restreintes à la catégorie active de GameSettings si elle
+    est renseignée. Utilisé par le solo (GameSessionView) ET le mode classe
+    (MultiplayerConsumer.start_game) : tout nouveau mode de jeu doit tirer ses
+    paires ici pour respecter le réglage admin.
+    """
+    qs = MediaPair.objects.filter(is_active=True)
+    # Lecture directe (pas de .load() : pas d'écriture sur un chemin chaud)
+    active_category_id = (
+        GameSettings.objects.filter(pk=1)
+        .values_list('active_category_id', flat=True)
+        .first()
+    )
+    if active_category_id:
+        qs = qs.filter(category_id=active_category_id)
+    return qs
+
+
 class GlobalStats(models.Model):
     """Global statistics for each media pair."""
     media_pair = models.OneToOneField(

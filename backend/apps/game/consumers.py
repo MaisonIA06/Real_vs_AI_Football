@@ -8,7 +8,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.utils import timezone
 
-from .models import MultiplayerRoom, MultiplayerPlayer, MultiplayerAnswer, MediaPair
+from .models import MultiplayerRoom, MultiplayerPlayer, MultiplayerAnswer, MediaPair, playable_pairs
 
 logger = logging.getLogger(__name__)
 
@@ -522,13 +522,16 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
             except MultiplayerPlayer.DoesNotExist:
                 pass
     
-    @database_sync_to_async
-    def start_game(self):
-        """Start the game and prepare questions."""
+    def start_game_sync(self):
+        """Start the game and prepare questions.
+
+        Version sync exposée telle quelle pour les tests (appel direct dans le
+        même thread, sans database_sync_to_async : cf. ActiveCategoryFilterTests).
+        """
         room = MultiplayerRoom.objects.get(room_code=self.room_code)
 
-        # 10 paires aléatoires parmi les paires actives.
-        all_pairs = list(MediaPair.objects.filter(is_active=True))
+        # 10 paires aléatoires (restreint à la catégorie active éventuelle).
+        all_pairs = list(playable_pairs())
         pairs = random.sample(all_pairs, min(10, len(all_pairs)))
         room.pairs.set(pairs)
 
@@ -542,7 +545,9 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
         room.status = 'playing'
         room.current_pair_index = 0
         room.save()
-    
+
+    start_game = database_sync_to_async(start_game_sync)
+
     @database_sync_to_async
     def get_current_question_data(self):
         """Get data for the current question."""

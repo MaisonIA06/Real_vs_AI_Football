@@ -9,7 +9,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import MediaPair, GameSession, GameAnswer, GlobalStats, MultiplayerRoom
+from .models import MediaPair, GameSession, GameAnswer, GlobalStats, MultiplayerRoom, playable_pairs
 from .serializers import (
     GameSessionCreateSerializer,
     GameSessionSerializer,
@@ -38,8 +38,8 @@ class GameSessionView(APIView):
         serializer = GameSessionCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # Pick 10 random pairs
-        all_pairs = list(MediaPair.objects.filter(is_active=True))
+        # Pick 10 random pairs (restreint à la catégorie active éventuelle)
+        all_pairs = list(playable_pairs())
         pairs = random.sample(all_pairs, min(10, len(all_pairs)))
 
         if len(pairs) < 1:

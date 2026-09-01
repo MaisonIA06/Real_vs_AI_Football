@@ -139,3 +139,74 @@ class OpaqueMediaUrlTests(TestCase):
         self.assertTrue(os.path.exists(link_path), "Le symlink opaque doit exister")
         with open(link_path, 'rb') as fh:
             self.assertEqual(fh.read(), b'realbytes')
+
+
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class ActiveCategoryFilterTests(TestCase):
+    """La catégorie active (GameSettings) restreint le tirage des paires,
+    en solo comme en mode classe. Null = toutes les catégories."""
+
+    def setUp(self):
+        from apps.game.models import GameSettings  # noqa: F401 (usage ci-dessous)
+        self.animal = Category.objects.create(name='Animal')
+        self.paysage = Category.objects.create(name='Paysage')
+        self.animal_pairs = [self._make_pair(self.animal, f'A{i}') for i in range(3)]
+        self.paysage_pairs = [self._make_pair(self.paysage, f'P{i}') for i in range(3)]
+
+    def _make_pair(self, category, name):
+        return MediaPair.objects.create(
+            category=category,
+            media_type='image',
+            real_media=SimpleUploadedFile(f'{name}.jpg', b'r', content_type='image/jpeg'),
+            ai_media=SimpleUploadedFile(f'{name}_AI.jpg', b'a', content_type='image/jpeg'),
+        )
+
+    def _activate(self, category):
+        from apps.game.models import GameSettings
+        obj = GameSettings.load()
+        obj.active_category = category
+        obj.save()
+
+    def test_playable_pairs_defaults_to_all_categories(self):
+        from apps.game.models import playable_pairs
+        self.assertEqual(playable_pairs().count(), 6)
+
+    def test_playable_pairs_filters_by_active_category(self):
+        from apps.game.models import playable_pairs
+        self._activate(self.animal)
+
+        pairs = list(playable_pairs())
+
+        self.assertEqual(len(pairs), 3)
+        self.assertTrue(all(p.category_id == self.animal.id for p in pairs))
+
+    def test_solo_session_only_draws_from_active_category(self):
+        self._activate(self.animal)
+
+        response = Client().post(
+            '/api/game/sessions/',
+            {'audience_type': 'public'},
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        returned_ids = {p['id'] for p in response.json()['pairs']}
+        self.assertEqual(returned_ids, {p.id for p in self.animal_pairs})
+
+    def test_multiplayer_start_game_only_draws_from_active_category(self):
+        from apps.game.models import MultiplayerRoom
+        self._activate(self.paysage)
+        room = MultiplayerRoom.objects.create()
+
+        consumer = MultiplayerConsumer()
+        consumer.room_code = room.room_code
+        # Version sync appelée directement dans le même thread pour rester
+        # compatible TestCase (TransactionTestCase est cassé par la table
+        # orpheline game_quizpair).
+        consumer.start_game_sync()
+
+        room.refresh_from_db()
+        self.assertEqual(
+            {p.id for p in room.pairs.all()},
+            {p.id for p in self.paysage_pairs},
+        )
