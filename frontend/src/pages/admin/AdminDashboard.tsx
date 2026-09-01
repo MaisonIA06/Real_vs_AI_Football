@@ -8,8 +8,9 @@ import {
   Trophy,
   GraduationCap,
   Trash2,
+  Filter,
 } from 'lucide-react';
-import { adminApi, DashboardStats } from '../../services/api';
+import { adminApi, Category, DashboardStats, GameSettingsAdmin } from '../../services/api';
 import AdminLayout from '../../components/admin/AdminLayout';
 
 
@@ -19,6 +20,27 @@ export default function AdminDashboard() {
     queryKey: ['admin-stats'],
     queryFn: () => adminApi.getStats().then((res) => res.data),
   });
+
+  const { data: settings } = useQuery<GameSettingsAdmin>({
+    queryKey: ['admin-settings'],
+    queryFn: () => adminApi.getSettings().then((res) => res.data),
+  });
+
+  const { data: categories } = useQuery<Category[]>({
+    queryKey: ['admin-categories'],
+    queryFn: () => adminApi.getCategories().then((res) => res.data),
+  });
+
+  const updateSettingsMutation = useMutation({
+    mutationFn: (activeCategory: number | null) => adminApi.updateSettings(activeCategory),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+    },
+  });
+
+  const handleActiveCategoryChange = (value: string) => {
+    updateSettingsMutation.mutate(value === '' ? null : Number(value));
+  };
 
   const deleteSessionMutation = useMutation({
     mutationFn: (sessionId: number) => adminApi.deleteSession(sessionId),
@@ -78,6 +100,51 @@ export default function AdminDashboard() {
           <h1 className="font-display text-3xl font-bold mb-2">Dashboard</h1>
           <p className="text-dark-400">Vue d'ensemble de Real vs AI</p>
         </div>
+
+        {/* Catégorie active du jeu */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card"
+        >
+          <h3 className="font-display text-lg font-semibold mb-1 flex items-center gap-2">
+            <Filter className="w-5 h-5 text-accent-400" />
+            Catégorie du jeu
+          </h3>
+          <p className="text-sm text-dark-400 mb-4">
+            Restreint les parties (solo et mode classe) aux paires d'une seule
+            catégorie. « Toutes les catégories » = tirage classique.
+          </p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <select
+              value={settings?.active_category ?? ''}
+              onChange={(e) => handleActiveCategoryChange(e.target.value)}
+              disabled={updateSettingsMutation.isPending}
+              className="input-styled"
+            >
+              <option value="">Toutes les catégories</option>
+              {categories?.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            {updateSettingsMutation.isPending ? (
+              <span className="text-sm text-dark-400">Enregistrement…</span>
+            ) : settings?.active_category ? (
+              <span className="text-sm text-accent-400">
+                Parties limitées à « {settings.active_category_name} »
+              </span>
+            ) : (
+              <span className="text-sm text-dark-400">Aucune restriction</span>
+            )}
+            {updateSettingsMutation.isError && (
+              <span className="text-sm text-red-400">
+                Échec de l'enregistrement — réessayez.
+              </span>
+            )}
+          </div>
+        </motion.div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

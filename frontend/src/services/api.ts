@@ -195,6 +195,11 @@ export interface MediaPairAdmin {
   created_at: string;
 }
 
+export interface GameSettingsAdmin {
+  active_category: number | null;
+  active_category_name: string | null;
+}
+
 export interface AudienceStats {
   success_rate: number;
   total_sessions: number;
@@ -250,6 +255,11 @@ export const adminApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
   deleteMediaPair: (id: number) => api.delete(`/admin/media-pairs/${id}/`),
+
+  // Réglages du jeu (catégorie active du tirage : null = toutes)
+  getSettings: () => api.get<GameSettingsAdmin>('/admin/settings/'),
+  updateSettings: (activeCategory: number | null) =>
+    api.put<GameSettingsAdmin>('/admin/settings/', { active_category: activeCategory }),
 
   // Stats
   getStats: () => api.get<DashboardStats>('/admin/stats/'),
