@@ -57,7 +57,7 @@ Le contexte ops complet (configs Nginx versionnées, scripts backup/watchdog, s�
 ### Deux apps Django
 
 - `apps.game` — API publique (`/api/game/`) : sessions solo, réponses, leaderboard, création de room multijoueur, détection d'IP locale (pour le QR code). Détient tous les modèles et le consumer WebSocket.
-- `apps.admin_api` — API admin (`/api/admin/`) : ViewSets CRUD pour `Category` et `MediaPair`, stats dashboard, suppression de session. **Auth applicative** : ces routes exigent `IsAdminUser` (DRF `TokenAuthentication`) ; login via `POST /api/admin/auth/login/` (identifiants superuser Django → token). Le permission DRF par défaut reste `AllowAny` (API de jeu publique) ; seules les vues admin surchargent en `IsAdminUser`.
+- `apps.admin_api` — API admin (`/api/admin/`) : ViewSets CRUD pour `Category` et `MediaPair`, stats dashboard, suppression de session, réglages du jeu (`GET/PUT /api/admin/settings/`). **Auth applicative** : ces routes exigent `IsAdminUser` (DRF `TokenAuthentication`) ; login via `POST /api/admin/auth/login/` (identifiants superuser Django → token). Le permission DRF par défaut reste `AllowAny` (API de jeu publique) ; seules les vues admin surchargent en `IsAdminUser`.
 
 Routes racines : `config/urls.py` monte `/admin/` (admin Django), `/api/game/`, `/api/admin/`. Le routing ASGI (`config/asgi.py` + `apps.game.routing`) expose `ws/multiplayer/<room_code>/`.
 
@@ -77,6 +77,10 @@ La commande `populate_pairs` est le mécanisme de seed de la DB depuis le filesy
 - Le matching se fait par `(category_slug, base_name.lower())`. Les fichiers réels sans correspondance sont signalés en warning et ignorés.
 - Le nom de catégorie vient du nom du dossier (capitalisé). La difficulté par défaut est `medium`.
 
+### Catégorie active (réglage admin du tirage)
+
+`GameSettings` (`apps/game/models.py`, singleton pk=1) porte `active_category` (FK nullable vers `Category` ; null = toutes). **`playable_pairs()`** (même fichier) est la **source de vérité unique du tirage** : paires actives ∩ catégorie active éventuelle — utilisée par le solo (`GameSessionView`) et le mode classe (`start_game_sync`). Tout nouveau mode de jeu doit tirer ses paires via ce helper. Réglage exposé par `GET/PUT /api/admin/settings/` (IsAdminUser) et piloté depuis le bloc « Catégorie du jeu » du Dashboard admin. Si la catégorie a moins de 10 paires, la partie se joue avec ce qu'elle contient. Le `start_game` du consumer est `start_game = database_sync_to_async(start_game_sync)` : la version sync est appelée directement dans les tests (`TestCase`, même thread — `TransactionTestCase` reste cassé par la table orpheline `game_quizpair`).
+
 ### Scoring (mode solo)
 
 Dans `AnswerSubmitView.post` (`backend/apps/game/views.py`) :
@@ -90,7 +94,7 @@ Dans `AnswerSubmitView.post` (`backend/apps/game/views.py`) :
 Un seul consumer : `apps.game.consumers.MultiplayerConsumer` gère toutes les actions via un champ `action` dispatché dans une map de handlers. Clés : `host.join`, `player.join`, `game.start`, `game.next_question`, `game.skip`, `game.show_answer`, `player.answer`, `game.end`.
 
 - `MultiplayerRoom.ai_positions` est un JSONField mappant `pair_id -> 'left'|'right'`, généré une seule fois au démarrage du jeu pour que l'hôte et les joueurs voient le même layout.
-- Sélection des paires : **uniquement aléatoire** (10 paires actives tirées au démarrage, affichées triées par id via `room_pairs`). L'ancien mécanisme de « preset » (sélection préchoisie/ordonnée pour l'Event Foot) a été retiré en 2026-09 ; `POST /api/game/multiplayer/rooms/` ignore tout champ `preset` résiduel.
+- Sélection des paires : **uniquement aléatoire** (10 paires tirées au démarrage parmi `playable_pairs()`, affichées triées par id via `room_pairs`). L'ancien mécanisme de « preset » (sélection préchoisie/ordonnée pour l'Event Foot) a été retiré en 2026-09 ; `POST /api/game/multiplayer/rooms/` ignore tout champ `preset` résiduel.
 - `MultiplayerPlayer.session_token` (UUID) sert à la reconnexion ; `channel_name` + `is_connected` suivent le WebSocket actif.
 - Bonus de score pour les premiers à répondre correctement : +50 / +30 / +10 (selon `answer_order`).
 - Les réponses d'un joueur sont `unique_together=['player', 'media_pair']` — un seul vote par question par joueur.
