@@ -15,6 +15,7 @@ urlpatterns = [
     # C: login admin → renvoie un token (DRF). Endpoint public (AllowAny) ;
     # ce sont les vues ci-dessus qui exigent IsAdminUser.
     path('auth/login/', obtain_auth_token, name='admin-login'),
+    path('settings/', views.GameSettingsView.as_view(), name='admin-settings'),
     path('stats/', views.dashboard_stats, name='dashboard-stats'),
     path('sessions/<int:session_id>/', views.delete_session, name='delete-session'),
 ]

@@ -275,6 +275,41 @@ class GameAnswer(models.Model):
         return f"{status} Q{self.order} - {self.session.session_key}"
 
 
+class GameSettings(models.Model):
+    """Réglages globaux du jeu — singleton (pk forcé à 1).
+
+    `active_category` restreint le tirage des paires (solo ET mode classe) à
+    une seule catégorie ; null = toutes les catégories (comportement par
+    défaut). Modifié via l'API admin (`/api/admin/settings/`).
+    """
+    active_category = models.ForeignKey(
+        Category,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        help_text=(
+            "Si renseignée, les parties ne proposent que des paires de cette "
+            "catégorie ; vide = toutes les catégories."
+        ),
+    )
+
+    class Meta:
+        verbose_name_plural = "Game settings"
+
+    def __str__(self):
+        return f"Réglages du jeu (catégorie active : {self.active_category or 'toutes'})"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1  # singleton : une seule ligne, toujours pk=1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 class GlobalStats(models.Model):
     """Global statistics for each media pair."""
     media_pair = models.OneToOneField(

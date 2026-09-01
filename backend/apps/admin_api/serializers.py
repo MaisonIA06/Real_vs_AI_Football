@@ -5,7 +5,7 @@ import os
 
 from rest_framework import serializers
 from django.conf import settings
-from apps.game.models import Category, MediaPair, GameSession, GlobalStats
+from apps.game.models import Category, MediaPair, GameSession, GameSettings, GlobalStats
 
 
 # Whitelist stricte d'extensions par type de média. Toute autre extension
@@ -120,6 +120,18 @@ class MediaPairCreateSerializer(serializers.ModelSerializer):
                 _validate_extension(attrs.get(field_name), media_type, field_name)
 
         return attrs
+
+
+class GameSettingsSerializer(serializers.ModelSerializer):
+    """Réglages globaux du jeu (catégorie active du tirage des paires)."""
+    active_category_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = GameSettings
+        fields = ['active_category', 'active_category_name']
+
+    def get_active_category_name(self, obj):
+        return obj.active_category.name if obj.active_category else None
 
 
 class DashboardStatsSerializer(serializers.Serializer):

@@ -8,13 +8,34 @@ from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 
-from apps.game.models import Category, MediaPair, GameSession, GlobalStats
+from rest_framework.views import APIView
+
+from apps.game.models import Category, MediaPair, GameSession, GameSettings, GlobalStats
 from .serializers import (
     CategoryAdminSerializer,
+    GameSettingsSerializer,
     MediaPairAdminSerializer,
     MediaPairCreateSerializer,
     DashboardStatsSerializer,
 )
+
+
+class GameSettingsView(APIView):
+    """Réglages globaux du jeu : GET pour lire, PUT pour modifier.
+
+    `active_category` (id de Category ou null) restreint le tirage des paires
+    de toutes les parties (solo et mode classe) à cette catégorie.
+    """
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        return Response(GameSettingsSerializer(GameSettings.load()).data)
+
+    def put(self, request):
+        serializer = GameSettingsSerializer(GameSettings.load(), data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
