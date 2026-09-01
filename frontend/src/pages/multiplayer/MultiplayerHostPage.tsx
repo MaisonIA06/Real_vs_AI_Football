@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';
@@ -71,7 +71,6 @@ type HostScreen = 'lobby' | 'question' | 'answer' | 'podium';
 
 export default function MultiplayerHostPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [hostToken, setHostToken] = useState<string | null>(null);
@@ -110,9 +109,7 @@ export default function MultiplayerHostPage() {
           console.warn('Failed to get IP from backend:', error);
         }
         
-        // Preset optionnel via l'URL (?preset=foot) pour une sélection préchoisie.
-        const preset = searchParams.get('preset') || undefined;
-        const response = await gameApi.createMultiplayerRoom(preset);
+        const response = await gameApi.createMultiplayerRoom();
         const code = response.data.room_code;
         setRoomCode(code);
         // Stocker le host_token reçu à la création (renvoyé UNIQUEMENT ici)
