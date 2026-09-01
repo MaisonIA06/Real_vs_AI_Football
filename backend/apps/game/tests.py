@@ -21,6 +21,33 @@ class QuizAppRemovedTests(SimpleTestCase):
         self.assertNotIn('apps.quiz', settings.INSTALLED_APPS)
 
 
+class PresetsRemovedTests(TestCase):
+    """Le mécanisme de preset (sélection Foot de l'Event Foot) a été retiré.
+
+    La création de room redevient uniquement aléatoire : un éventuel champ
+    `preset` dans le payload est ignoré au lieu de piloter (ou refuser) la
+    sélection des paires.
+    """
+
+    def test_create_room_ignores_preset_field(self):
+        response = Client().post(
+            '/api/game/multiplayer/rooms/',
+            {'preset': 'foot'},
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertIn('room_code', payload)
+        self.assertIn('host_token', payload)
+        self.assertNotIn('preset', payload)
+
+    def test_room_model_has_no_ordered_pair_ids_field(self):
+        from apps.game.models import MultiplayerRoom
+        field_names = [f.name for f in MultiplayerRoom._meta.get_fields()]
+        self.assertNotIn('ordered_pair_ids', field_names)
+
+
 class HealthEndpointTests(TestCase):
     def test_health_endpoint_reports_database_and_cache_status(self):
         response = Client().get('/health/')

@@ -13,20 +13,9 @@ from .models import MultiplayerRoom, MultiplayerPlayer, MultiplayerAnswer, Media
 logger = logging.getLogger(__name__)
 
 
-def ordered_pairs_for_room(room):
-    """Paires de la room dans l'ordre d'affichage.
-
-    Si la room a un `ordered_pair_ids` (sélection préchoisie / preset), on suit
-    cet ordre exact ; sinon on retombe sur le tri par id (comportement
-    historique du mode classe aléatoire).
-    """
-    pairs = list(room.pairs.all())
-    if room.ordered_pair_ids:
-        rank = {pid: i for i, pid in enumerate(room.ordered_pair_ids)}
-        pairs.sort(key=lambda p: rank.get(p.id, len(rank)))
-    else:
-        pairs.sort(key=lambda p: p.id)
-    return pairs
+def room_pairs(room):
+    """Paires de la room dans l'ordre d'affichage (tri stable par id)."""
+    return list(room.pairs.order_by('id'))
 
 
 class MultiplayerConsumer(AsyncWebsocketConsumer):
@@ -538,15 +527,10 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
         """Start the game and prepare questions."""
         room = MultiplayerRoom.objects.get(room_code=self.room_code)
 
-        if room.ordered_pair_ids:
-            # Sélection préchoisie (preset) : paires déjà fixées et ordonnées à
-            # la création de la room. On respecte l'ordre, pas de tirage aléatoire.
-            pairs = ordered_pairs_for_room(room)
-        else:
-            # Comportement classique : 10 paires aléatoires.
-            all_pairs = list(MediaPair.objects.filter(is_active=True))
-            pairs = random.sample(all_pairs, min(10, len(all_pairs)))
-            room.pairs.set(pairs)
+        # 10 paires aléatoires parmi les paires actives.
+        all_pairs = list(MediaPair.objects.filter(is_active=True))
+        pairs = random.sample(all_pairs, min(10, len(all_pairs)))
+        room.pairs.set(pairs)
 
         # Generate random AI positions
         positions = {}
@@ -563,8 +547,7 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
     def get_current_question_data(self):
         """Get data for the current question."""
         room = MultiplayerRoom.objects.get(room_code=self.room_code)
-        # Ordre d'affichage (preset si défini, sinon par id)
-        pairs = ordered_pairs_for_room(room)
+        pairs = room_pairs(room)
         
         if room.current_pair_index >= len(pairs):
             return None
@@ -607,9 +590,9 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
         room.status = 'playing'
         room.save()
 
-        # Même source de vérité que l'affichage (ordered_pairs_for_room), pour
-        # éviter une divergence si une paire est désactivée en cours de partie.
-        return room.current_pair_index < len(ordered_pairs_for_room(room))
+        # Même source de vérité que l'affichage (room_pairs), pour éviter une
+        # divergence si une paire est désactivée en cours de partie.
+        return room.current_pair_index < len(room_pairs(room))
     
     @database_sync_to_async
     def set_room_status(self, status):
@@ -622,8 +605,7 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
     def get_answer_data(self):
         """Get the correct answer data for the current question."""
         room = MultiplayerRoom.objects.get(room_code=self.room_code)
-        # Ordre d'affichage (preset si défini, sinon par id)
-        pairs = ordered_pairs_for_room(room)
+        pairs = room_pairs(room)
         
         if room.current_pair_index >= len(pairs):
             return None
@@ -660,8 +642,7 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
         try:
             room = MultiplayerRoom.objects.get(room_code=self.room_code)
             player = MultiplayerPlayer.objects.get(id=self.player_id)
-            # Ordre d'affichage (preset si défini, sinon par id)
-            pairs = ordered_pairs_for_room(room)
+            pairs = room_pairs(room)
             
             if room.current_pair_index >= len(pairs):
                 return {'error': 'No current question'}
@@ -740,8 +721,7 @@ class MultiplayerConsumer(AsyncWebsocketConsumer):
     def check_all_answered(self):
         """Check if all connected players have answered the current question."""
         room = MultiplayerRoom.objects.get(room_code=self.room_code)
-        # Ordre d'affichage (preset si défini, sinon par id)
-        pairs = ordered_pairs_for_room(room)
+        pairs = room_pairs(room)
         
         if room.current_pair_index >= len(pairs):
             return True
