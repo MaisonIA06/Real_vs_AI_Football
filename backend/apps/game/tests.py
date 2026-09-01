@@ -14,6 +14,13 @@ from apps.game.routing import websocket_urlpatterns
 from apps.game.serializers import MediaPairGameSerializer
 
 
+class QuizAppRemovedTests(SimpleTestCase):
+    """L'app quiz (ex-Quiz Foot / Event Foot) a été retirée du projet."""
+
+    def test_quiz_app_not_installed(self):
+        self.assertNotIn('apps.quiz', settings.INSTALLED_APPS)
+
+
 class HealthEndpointTests(TestCase):
     def test_health_endpoint_reports_database_and_cache_status(self):
         response = Client().get('/health/')
