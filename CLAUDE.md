@@ -38,7 +38,7 @@ docker compose down          # conserve le volume DB
 docker compose down -v       # détruit le volume DB (relancer populate_pairs après)
 ```
 
-**Tests** : `backend/apps/game/tests.py` contient `HealthEndpointTests` (endpoint `/health/`) et `GameEndAuthorizationTests` (autorisation du consumer WebSocket). Lancer : `docker compose run --rm backend python manage.py test apps.game.tests` (ou `…tests.MaClasse.ma_methode` pour un test unique). ⚠️ La CI **ne lance pas** encore les tests. ⚠️ Piège : `TransactionTestCase` casse au `flush` à cause d'une table orpheline `game_quizpair` (FK vers `game_mediapair`) — pour tester le consumer, suivre le pattern **DB-less** de `GameEndAuthorizationTests` (`SimpleTestCase` + mock des accès DB). Pas de linter configuré ; pour un type-check : `tsc --noEmit` dans le conteneur frontend.
+**Tests** : `backend/apps/game/tests.py` contient `HealthEndpointTests` (endpoint `/health/`), `GameEndAuthorizationTests` (autorisation du consumer WebSocket), `QuizAppRemovedTests` et `PresetsRemovedTests` (non-régression du retrait de l'Event Foot). Lancer : `docker compose run --rm backend python manage.py test apps.game.tests` (ou `…tests.MaClasse.ma_methode` pour un test unique). ⚠️ La CI **ne lance pas** encore les tests. ⚠️ Piège : `TransactionTestCase` casse au `flush` à cause d'une table orpheline `game_quizpair` (FK vers `game_mediapair`) — pour tester le consumer, suivre le pattern **DB-less** de `GameEndAuthorizationTests` (`SimpleTestCase` + mock des accès DB). Pas de linter configuré ; pour un type-check : `tsc --noEmit` dans le conteneur frontend.
 
 ## Déploiement production
 
@@ -90,14 +90,14 @@ Dans `AnswerSubmitView.post` (`backend/apps/game/views.py`) :
 Un seul consumer : `apps.game.consumers.MultiplayerConsumer` gère toutes les actions via un champ `action` dispatché dans une map de handlers. Clés : `host.join`, `player.join`, `game.start`, `game.next_question`, `game.skip`, `game.show_answer`, `player.answer`, `game.end`.
 
 - `MultiplayerRoom.ai_positions` est un JSONField mappant `pair_id -> 'left'|'right'`, généré une seule fois au démarrage du jeu pour que l'hôte et les joueurs voient le même layout.
-- `MultiplayerRoom.ordered_pair_ids` (JSONField, vide par défaut) : sélection **préchoisie et ordonnée** de paires (preset). Vide → sélection aléatoire classique triée par id ; non vide → le consumer suit cet ordre exact (`ordered_pairs_for_room`). Les presets sont définis dans `apps/game/presets.py` par chemins `real_media` **stables** (pas par id, qui diffèrent dev/prod) ; `POST /api/game/multiplayer/rooms/` accepte `preset=<nom>` et **renvoie 400** si le preset est inconnu ou incomplet (paires non seedées). Preset `foot` = sélection de l'Event Foot.
+- Sélection des paires : **uniquement aléatoire** (10 paires actives tirées au démarrage, affichées triées par id via `room_pairs`). L'ancien mécanisme de « preset » (sélection préchoisie/ordonnée pour l'Event Foot) a été retiré en 2026-09 ; `POST /api/game/multiplayer/rooms/` ignore tout champ `preset` résiduel.
 - `MultiplayerPlayer.session_token` (UUID) sert à la reconnexion ; `channel_name` + `is_connected` suivent le WebSocket actif.
 - Bonus de score pour les premiers à répondre correctement : +50 / +30 / +10 (selon `answer_order`).
 - Les réponses d'un joueur sont `unique_together=['player', 'media_pair']` — un seul vote par question par joueur.
 
 Points d'entrée frontend du mode live : `pages/multiplayer/MultiplayerHostPage.tsx` (projecteur/enseignant), `MultiplayerJoinPage.tsx` (lobby via QR/code), `MultiplayerPlayerPage.tsx` (élève). Le hook `useMultiplayerSocket` encapsule la connexion/reconnexion WebSocket via le `session_token`.
 
-Le **Quiz Foot** (app `apps.quiz`, mode live event) a ses propres pages `pages/quiz/QuizHostPage.tsx` / `QuizJoinPage.tsx` / `QuizPlayerPage.tsx` + hook `useQuizSocket` (`ws/quiz/<code>/`). Leur **UI/UX est volontairement alignée sur celle du mode classe** (salle d'attente avec QR/avatars/correction IP, carte « Résultats » des joueurs à la révélation, podium animé, header joueur sticky) — en gardant les spécificités quiz (image centrale + propositions A/B/C/D ou Vrai/Faux). Différence assumée : **pas de chronomètre** (révélation manuelle ou auto quand tous ont répondu). La page `pages/EventFootPage.tsx` (`/event-foot`) enchaîne Quiz Foot puis Real vs AI (preset `foot`).
+L'**Event Foot** (app `apps.quiz` « Quiz Foot », preset `foot`, page `/event-foot`) a été **entièrement retiré en 2026-09** (commits `754f1a3` → étape Nginx/docs). Ses tables ont été droppées par la migration `quiz.0002_delete_quiz_models` avant le retrait de l'app ; le code reste récupérable dans l'historique git si un event similaire revient.
 
 ### Client API frontend
 
